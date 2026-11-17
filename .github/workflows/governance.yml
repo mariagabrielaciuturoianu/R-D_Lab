@@ -1,0 +1,27 @@
+# Evidence-based governance for GitHub Free (R-01): any commit that lands on main
+# without a merged pull request turns this workflow red.
+name: governance
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  pr-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify the commit arrived through a merged PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          n=$(gh api "repos/${REPO}/commits/${SHA}/pulls" \
+            --jq '[.[] | select(.merged_at != null)] | length')
+          if [ "$n" -eq 0 ]; then
+            echo "::error::${SHA} reached main without a merged PR (R-01)"
+            exit 1
+          fi
+          echo "OK: ${SHA} arrived through a merged PR"

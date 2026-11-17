@@ -1,0 +1,22 @@
+# Environment files and decrypted secrets (R-02)
+.env
+.env.*
+!.env.example
+
+# Private keys and lab PKI material (R-02)
+keys.txt
+*.key
+*-key.pem
+certs/
+
+# Claude Code per-user settings; shared policy lives in .claude/settings.json
+.claude/settings.local.json
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
