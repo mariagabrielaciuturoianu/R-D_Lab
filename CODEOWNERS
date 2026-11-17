@@ -1,3 +1,11 @@
 # Global ownership rule:
 # Requires approval from this user for any changes across the entire repository.
 * @mariagabrielaciuturoianu
+
+# AI configuration steers every agent session; reviewed like code (R-05).
+/CLAUDE.md @mariagabrielaciuturoianu
+/.claude/  @mariagabrielaciuturoianu
+
+# Governance and pipeline definitions (R-01).
+/.github/  @mariagabrielaciuturoianu
+/.pre-commit-config.yaml @mariagabrielaciuturoianu
