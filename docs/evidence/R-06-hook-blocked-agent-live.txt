@@ -1,0 +1,9 @@
+# Live block of a Claude Code (Opus 5.5) session by the PreToolUse guard hook, 2026-11-17.
+# The agent tried to run a shell command whose text contained a decrypted env path
+# (it was generating hook test cases). The harness refused the call before execution;
+# the model did not decide this, the hook did.
+
+PreToolUse:Bash hook error: ["${CLAUDE_PROJECT_DIR}"/.claude/hooks/guard.sh]: Blocked by policy: command touches a secret path (R-06)
+
+# Follow-up: the test cases were moved into tests/test_guard_hook.py, a reviewed file,
+# so no shell command needs to name a secret path.
