@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./certs/**)",
+      "Read(**/*.key)",
+      "Read(~/.config/sops/age/**)",
+      "Edit(./.claude/settings.json)",
+      "Edit(./.claude/hooks/**)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push origin main*)",
+      "Bash(git push origin HEAD:main*)",
+      "Bash(git commit --no-verify*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/guard.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
