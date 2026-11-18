@@ -3,6 +3,11 @@
 # The password goes to curl through a config on stdin, never on the command line.
 set -euo pipefail
 
+if [ ! -f .runtime/.env.secrets ]; then
+  echo "No decrypted secret in .runtime/: run make deploy first." >&2
+  exit 1
+fi
+
 set -a
 . config/stack.env
 [ -f .env ] && . ./.env

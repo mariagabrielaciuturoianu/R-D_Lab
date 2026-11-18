@@ -3,6 +3,10 @@
 
 PYTHON := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
+# sops on macOS looks in ~/Library/Application Support by default; use the documented
+# location unless the caller already set one. The key itself never enters the repo (R-02).
+export SOPS_AGE_KEY_FILE ?= $(HOME)/.config/sops/age/keys.txt
+
 # Non-secret settings, an optional local override, then the decrypted secret (R-02, R-07).
 ENV_FILES := --env-file config/stack.env $(if $(wildcard .env),--env-file .env) \
              $(if $(wildcard .runtime/.env.secrets),--env-file .runtime/.env.secrets)
