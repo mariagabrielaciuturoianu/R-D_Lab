@@ -1,9 +1,9 @@
 # make test on branch docs/evidence-lab1-2 at 753030b, 2026-11-17T19:41Z
 .venv/bin/python -m pytest -v tests/
 ============================= test session starts ==============================
-platform darwin -- Python 3.15.0, pytest-9.2.0, pluggy-1.7.0 -- /Users/gabrielaciuturoianu/Documents/Facultate/Git/R-D_Lab/.venv/bin/python
+platform darwin -- Python 3.15.0, pytest-9.2.0, pluggy-1.7.0 -- <repo>/.venv/bin/python
 cachedir: .pytest_cache
-rootdir: /Users/gabrielaciuturoianu/Documents/Facultate/Git/R-D_Lab
+rootdir: <repo>
 collecting ... collected 23 items
 
 tests/test_guard_hook.py::test_blocked[R-03-Bash-git push --force origin main] PASSED [  4%]
