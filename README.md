@@ -50,9 +50,33 @@ or GitHub Pro.
 ## Commands
 
 ```bash
-pre-commit install   # once per clone
+make hooks           # once per clone: install pre-commit hooks
+make venv            # once per clone: pinned test dependencies
 make lint            # pre-commit on all files
-make test            # tests (added with the project components)
+make test            # guard hook and compose policy tests
 ```
+
+## Run the stack (Lab 3)
+
+Requirements: Docker Desktop (arm64), `sops`, `age`, `openssl`, and an age key in
+`~/.config/sops/age/keys.txt` whose public key is the recipient in `.sops.yaml`.
+
+```bash
+make secrets-init    # once: prompts for two passwords, writes SOPS ciphertext only
+make deploy          # certificates, decrypt into .runtime/, start OpenSearch then Dashboards
+make health          # green over mTLS; a request without a client cert is refused
+make destroy         # containers, network, data volume and .runtime/ removed
+```
+
+| Piece | File | Risk |
+|---|---|---|
+| Images pinned by linux/arm64 digest, ports on 127.0.0.1 from `config/stack.env` | `compose.yaml`, `tests/test_compose_policy.py` | R-07 |
+| Root CA and leaf certificates per component (OpenSSL) | `scripts/pki.sh` (output in git-ignored `certs/`) | R-07 |
+| mTLS: OpenSearch requires a client cert; Dashboards verifies the server and presents one | `config/opensearch.yml`, `config/opensearch_dashboards.yml` | R-07 |
+| Passwords committed only as age ciphertext | `.sops.yaml`, `secrets/opensearch.enc.yaml` | R-02 |
+| OpenSearch receives bcrypt hashes only; plaintext lives in `.runtime/` for one deployment | `scripts/render-runtime.sh`, `Makefile` | R-02 |
+
+Dashboards: `https://localhost:5601`. Trust `certs/root-ca.pem` in your browser or accept
+the warning once.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).

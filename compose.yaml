@@ -1,0 +1,61 @@
+# SOC stack: OpenSearch and Dashboards (R-07). Run only through `make deploy` / `make destroy`.
+# Images are pinned by linux/arm64 digest; host ports bind to 127.0.0.1 and come from
+# config/stack.env; every link between components is mTLS with certs from scripts/pki.sh.
+name: soc-hunting
+
+services:
+  opensearch:
+    # opensearchproject/opensearch:2.19.7 (linux/arm64)
+    image: opensearchproject/opensearch@sha256:b04eee5919ec852b10fab68f8a69c4903d22c5dcc894805b1ece178c0119cb47
+    platform: linux/arm64
+    environment:
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms${OPENSEARCH_HEAP} -Xmx${OPENSEARCH_HEAP}"
+    ulimits:
+      memlock: {soft: -1, hard: -1}
+      nofile: {soft: 65536, hard: 65536}
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+      - ./config/opensearch.yml:/usr/share/opensearch/config/opensearch.yml:ro
+      - ./.runtime/internal_users.yml:/usr/share/opensearch/config/opensearch-security/internal_users.yml:ro
+      - ./certs/root-ca.pem:/usr/share/opensearch/config/certs/root-ca.pem:ro
+      - ./certs/opensearch.pem:/usr/share/opensearch/config/certs/opensearch.pem:ro
+      - ./certs/opensearch-key.pem:/usr/share/opensearch/config/certs/opensearch-key.pem:ro
+    ports:
+      - "127.0.0.1:${OPENSEARCH_PORT}:9200"
+    # Ready means the REST layer completes an mTLS handshake and answers (401 without a user).
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' --cacert config/certs/root-ca.pem --cert config/certs/opensearch.pem --key config/certs/opensearch-key.pem https://localhost:9200 | grep -qE '^(200|401)$'"]
+      interval: 5s
+      timeout: 5s
+      retries: 36
+      start_period: 10s
+    networks: [soc]
+    restart: unless-stopped
+
+  dashboards:
+    # opensearchproject/opensearch-dashboards:2.19.7 (linux/arm64)
+    image: opensearchproject/opensearch-dashboards@sha256:971801172cdf8c235d8c46319ef8ea55a859cfa5de4ceadfd00efb8ce6e0057d
+    platform: linux/arm64
+    environment:
+      OPENSEARCH_PASSWORD: "${DASHBOARDS_SERVER_PASSWORD:-}"
+    volumes:
+      - ./config/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml:ro
+      - ./certs/root-ca.pem:/usr/share/opensearch-dashboards/config/certs/root-ca.pem:ro
+      - ./certs/dashboards.pem:/usr/share/opensearch-dashboards/config/certs/dashboards.pem:ro
+      - ./certs/dashboards-key.pem:/usr/share/opensearch-dashboards/config/certs/dashboards-key.pem:ro
+    ports:
+      - "127.0.0.1:${DASHBOARDS_PORT}:5601"
+    networks: [soc]
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  opensearch-data:
+
+networks:
+  soc:
+    driver: bridge

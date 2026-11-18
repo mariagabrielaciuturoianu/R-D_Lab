@@ -1,7 +1,16 @@
-# Default commands (see CLAUDE.md). deploy/destroy are added with the stack in Lab 3.
-.PHONY: lint test hooks venv
+# Default commands (see CLAUDE.md).
+.PHONY: lint test hooks venv pki secrets-init secrets deploy health destroy
 
 PYTHON := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
+
+# sops on macOS looks in ~/Library/Application Support by default; use the documented
+# location unless the caller already set one. The key itself never enters the repo (R-02).
+export SOPS_AGE_KEY_FILE ?= $(HOME)/.config/sops/age/keys.txt
+
+# Non-secret settings, an optional local override, then the decrypted secret (R-02, R-07).
+ENV_FILES := --env-file config/stack.env $(if $(wildcard .env),--env-file .env) \
+             $(if $(wildcard .runtime/.env.secrets),--env-file .runtime/.env.secrets)
+COMPOSE := docker compose $(ENV_FILES)
 
 # Install the pre-commit hooks into this clone (R-01, R-02).
 hooks:
@@ -18,3 +27,32 @@ lint:
 # Unit tests, including the guard hook regression suite (R-01..R-06).
 test:
 	$(PYTHON) -m pytest -v tests/
+
+# Local root CA and leaf certificates for mTLS; keeps existing ones (R-07).
+pki:
+	./scripts/pki.sh certs
+
+# Create the SOPS/age-encrypted admin and Dashboards passwords, interactively (R-02).
+secrets-init:
+	./scripts/new-secret.sh
+
+# Decrypt into .runtime/ for this deployment only (R-02).
+secrets:
+	./scripts/render-runtime.sh
+
+# Idempotent: safe to run again on a running stack (R-07).
+deploy: pki secrets
+	$(MAKE) --no-print-directory up
+
+up:
+	$(COMPOSE) up -d --wait --wait-timeout 180 opensearch
+	$(COMPOSE) up -d dashboards
+	@echo "OpenSearch is up; run make health. Dashboards: https://localhost (DASHBOARDS_PORT)"
+
+health:
+	./scripts/health.sh
+
+# Removes containers, network, data volume and every decrypted file (R-02).
+destroy:
+	-$(COMPOSE) down -v --remove-orphans
+	rm -rf .runtime

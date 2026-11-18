@@ -22,15 +22,17 @@ Every change references the risk IDs it addresses (see `RISK-REGISTER.md`), in t
 
 ## Banned Patterns
 - NEVER output or write plaintext passwords, API keys, or certificates into unencrypted files intended for version control.
-- NEVER hardcode open ports without explicit least-privilege scoping. Read host ports from `.env` and bind to `127.0.0.1` unless exposure is required.
+- NEVER hardcode open ports without explicit least-privilege scoping. Read host ports from `config/stack.env` (local override in `.env`) and bind to `127.0.0.1` unless exposure is required.
 - NEVER use unpinned container images, actions or hooks.
 - NEVER read or print `.env*`, `secrets/`, `*.key` or age key files. The guard hook enforces this; do not try to work around it.
 
 ## Default Commands
 - Linting: `make lint` (pre-commit on all files)
 - Tests: `make test`
-- Build/Deploy: `make deploy` (decrypts secrets and spins up the stack; added in Lab 3)
-- Teardown: `make destroy` (removes containers, networks, and decrypted temporary files; added in Lab 3)
+- Build/Deploy: `make deploy` (issues missing certificates, decrypts secrets into `.runtime/`, spins up the stack; safe to re-run)
+- Health: `make health` (cluster health over mTLS, and proof that a request without a client certificate is refused)
+- Teardown: `make destroy` (removes containers, network, data volume and `.runtime/`)
+- New secret: `make secrets-init` (interactive; the user runs it, never the assistant)
 
 ## Memory
 Project corrections live in `.claude/memory/`, one file per correction, indexed below. When the user corrects you, add a new file there and a line to the index, in the same pull request as the change it governs.

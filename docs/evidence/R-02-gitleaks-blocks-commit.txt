@@ -1,0 +1,35 @@
+# R-02 evidence: the repository's own .pre-commit-config.yaml refuses a commit that
+# stages a GitHub token. Throwaway repo, random fake token; any token text is redacted.
+$ git commit -m 'feat: add config'
+Detect hardcoded secrets.................................................Failed
+- hook id: gitleaks
+- exit code: 1
+
+○
+    │╲
+    │ ○
+    ○ ░
+    ░    gitleaks
+
+Finding:     github_token = "REDACTED
+Secret:      REDACTED
+RuleID:      github-pat
+Entropy:     5.021928
+File:        app.conf
+Line:        1
+Fingerprint: app.conf:github-pat:1
+
+10:55PM INF 1 commits scanned.
+10:55PM INF scan completed in 14.2ms
+10:55PM WRN leaks found: 1
+
+don't commit to branch...................................................Passed
+check for added large files..............................................Passed
+detect private key.......................................................Passed
+check yaml...........................................(no files to check)Skipped
+check json...........................................(no files to check)Skipped
+fix end of files.........................................................Passed
+trim trailing whitespace.................................................Passed
+exit=1
+$ git log --oneline   # only the init commit exists
+0487479 init
