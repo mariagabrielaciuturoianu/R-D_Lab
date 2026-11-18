@@ -18,9 +18,7 @@ A small self-hosted SOC platform for hypothesis-driven APT hunting:
    AI assistant under the controls in `CLAUDE.md` and `.claude/`, and land only through
    reviewed, tested pull requests.
 
-It is the working prototype of the dissertation *Optimizing APT detection in critical
-infrastructure SOCs: a hypothesis-driven, LLM-assisted framework*. Scope and every control
-trace back to [RISK-REGISTER.md](RISK-REGISTER.md).
+Scope and every control trace back to [RISK-REGISTER.md](RISK-REGISTER.md).
 
 **Stack:** OpenSearch and OpenSearch Dashboards (Docker Compose, arm64, pinned digests),
 SOPS/age secrets, a local root CA for mTLS, Sigma and pytest, MISP with PyMISP, Shodan.

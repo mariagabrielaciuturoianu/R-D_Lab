@@ -14,9 +14,7 @@ Implemented or Verified points to something a reviewer can open in the clone.
 **Project.** A hypothesis-driven APT hunting platform for a critical-infrastructure SOC.
 Hunts are code: each hypothesis names an APT behaviour, its ATT&CK techniques, the data it
 needs and a tested Sigma rule. MISP threat intelligence decides which hypotheses to hunt
-first and raises the risk score of telemetry that touches known APT infrastructure. It is
-the working prototype of the dissertation *Optimizing APT detection in critical
-infrastructure SOCs: a hypothesis-driven, LLM-assisted framework*.
+first and raises the risk score of telemetry that touches known APT infrastructure.
 
 > Rows R-01 to R-06 cover the governed AI workflow. Rows R-07 to R-13 cover the SOC
 > platform, the hunting function it serves, and the threat landscape it hunts.
