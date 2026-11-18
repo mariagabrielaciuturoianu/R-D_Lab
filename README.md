@@ -1,11 +1,27 @@
-# R&D Lab: AI-Driven Security Engineering
+# APT Hunting as Code for Critical-Infrastructure SOCs
 
 Project repository for Risk and Damage Management, Module 4A (ULBS Cybersecurity Master).
 Engineering is driven by AI configuration authored in this repository, and every change,
 human or agent, arrives through a governed pull request.
 
-> **Project theme:** to be fixed. Scope and the internal/external risks follow from
-> rows R-07 onward in [RISK-REGISTER.md](RISK-REGISTER.md).
+## What it does
+
+A small self-hosted SOC platform for hypothesis-driven APT hunting:
+
+1. **Hunts as code.** Each hunt in `hunts/` states a hypothesis about an APT behaviour,
+   its ATT&CK techniques, the telemetry it needs and a Sigma rule, with a positive and a
+   negative sample tested in CI.
+2. **Intelligence decides the order.** MISP supplies APT campaigns and indicators. Active
+   campaigns move matching hypotheses up the hunt queue; telemetry that touches known APT
+   infrastructure is tagged and its risk score raised.
+3. **Governed AI engineering.** Rules, pipelines and infrastructure are generated with an
+   AI assistant under the controls in `CLAUDE.md` and `.claude/`, and land only through
+   reviewed, tested pull requests.
+
+Scope and every control trace back to [RISK-REGISTER.md](RISK-REGISTER.md).
+
+**Stack:** OpenSearch and OpenSearch Dashboards (Docker Compose, arm64, pinned digests),
+SOPS/age secrets, a local root CA for mTLS, Sigma and pytest, MISP with PyMISP, Shodan.
 
 ## Governance (Labs 1 and 2)
 
@@ -19,7 +35,7 @@ human or agent, arrives through a governed pull request.
 | Least-privilege tokens | `CONTRIBUTING.md`, workflow `permissions:` blocks | R-04 |
 | Memory and skills reviewed like code | `CODEOWNERS`, `docs/ai-governance.md` | R-05 |
 
-**GitHub plan route:** 4, GitHub Free with evidence-based governance (local hook plus the
+**GitHub plan route:** GitHub Free with evidence-based governance (local hook plus the
 governance workflow). Update this line if the repository moves to the ULBS organization
 or GitHub Pro.
 

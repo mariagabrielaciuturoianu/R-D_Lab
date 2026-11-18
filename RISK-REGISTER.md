@@ -11,9 +11,13 @@ Likelihood (L) and impact (I) are scored 1 to 5 (see [Scales](#scales)). Inheren
 L x I. Residual score (RL x RI) is scored again with the control in place. A row marked
 Implemented or Verified points to something a reviewer can open in the clone.
 
-> Rows R-01 to R-06 cover the governed AI workflow and apply to any project theme.
-> Rows R-07 onward are reserved for the internal and external risks of the project theme
-> and are filled in when the theme is fixed.
+**Project.** A hypothesis-driven APT hunting platform for a critical-infrastructure SOC.
+Hunts are code: each hypothesis names an APT behaviour, its ATT&CK techniques, the data it
+needs and a tested Sigma rule. MISP threat intelligence decides which hypotheses to hunt
+first and raises the risk score of telemetry that touches known APT infrastructure.
+
+> Rows R-01 to R-06 cover the governed AI workflow. Rows R-07 to R-13 cover the SOC
+> platform, the hunting function it serves, and the threat landscape it hunts.
 
 ## Register
 
@@ -25,10 +29,13 @@ Implemented or Verified points to something a reviewer can open in the clone.
 | R-04 | Operational | GitHub credentials used by the CLI and CI | Leaked or stolen over-scoped token reaches other repositories | T1078.004 | Classic PAT with `repo` scope across all repositories | 3 | 5 | 15 (High) | Fine-grained PAT scoped to this repository, short expiry; workflows declare least-privilege `permissions:` | 2 | 2 | 4 (Low) | `CONTRIBUTING.md`; `.github/workflows/governance.yml` (`permissions:` block) | Implemented |
 | R-05 | Operational | AI configuration (`CLAUDE.md`, `.claude/memory/`, `.claude/skills/`) | Memory poisoning: a planted instruction steers later sessions to weaken a control, push to `main` or approve its own change | ATLAS AML.T0080 (AI Agent Context Poisoning) | Memory and skill files are loaded as trusted context every session | 3 | 5 | 15 (High) | Memory and skills reviewed in PRs via CODEOWNERS; safety-critical rules enforced by `deny` rules and a PreToolUse hook, not prose | 2 | 3 | 6 (Low) | `CODEOWNERS`; `.claude/settings.json`; `.claude/hooks/guard.sh`; `docs/ai-governance.md`; `docs/evidence/R-01-R-06-guard-hook-tests.txt`; `docs/evidence/R-05-hook-blocks-poisoned-push.png`; `docs/evidence/R-05-hook-self-protection.png` | Verified |
 | R-06 | Operational | Decrypted secrets on the workstation (`.env*`, `secrets/`, keys) | Agent reads a secret file into its context and leaks it in output, a commit or a prompt | T1552.001 | Agent has unrestricted file read in the working tree | 3 | 5 | 15 (High) | `deny` rules on secret paths; PreToolUse hook blocks Read/Edit/Write and shell access to them | 1 | 5 | 5 (Low) | `.claude/settings.json`; `.claude/hooks/guard.sh`; `docs/evidence/R-06-hook-blocked-agent-live.txt`; `docs/evidence/R-06-hook-blocks-secret-read.png`; `docs/evidence/R-01-R-06-guard-hook-tests.txt` | Verified |
-| R-07 | Internal | _Defined with the project theme_ | | | | | | | | | | | | Open |
-| R-08 | Internal | _Defined with the project theme_ | | | | | | | | | | | | Open |
-| R-09 | External | _Defined with the project theme (MISP enrichment, Lab 6)_ | | | | | | | | | | | | Open |
-| R-10 | External | _Defined with the project theme (external exposure, Lab 6)_ | | | | | | | | | | | | Open |
+| R-07 | Internal | SOC data store (OpenSearch) and analyst console (Dashboards) | Intruder on the host network reads or tampers with hunt telemetry, or reaches an unauthenticated console | T1557; T1565.001 | Plaintext links between components; services bound on all interfaces; mutable image tags | 3 | 4 | 12 (Medium) | mTLS between components with leaf certificates from a local root CA; host ports bound to 127.0.0.1 from `.env`; images pinned by arm64 digest; admin password as SOPS ciphertext | 1 | 4 | 4 (Low) | `compose.yaml`; `scripts/pki.sh`; `Makefile` (`deploy`, `destroy`); `secrets/opensearch.enc.yaml` | Open |
+| R-08 | Internal | Hunting programme (analyst time, hunt backlog) | Hunts are ad hoc and not tied to current intelligence, so an active APT keeps a long dwell time | — | No record of which hypotheses exist, what they cover, or why one runs before another | 4 | 4 | 16 (High) | Hunts as code: `hunts/H-xxx.yaml` records hypothesis, ATT&CK techniques, data sources and rule; MISP campaign data reorders the hunt queue | 2 | 4 | 8 (Medium) | `hunts/`; `scripts/prioritise_hunts.py` | Open |
+| R-09 | Internal | Detection rule set | A rule edit or schema change silently stops a hunt matching (false negative) | — | Rules shipped without samples or tests | 3 | 4 | 12 (Medium) | Every hunt rule ships a positive and a negative sample; pytest asserts match and no-match on every pull request | 1 | 4 | 4 (Low) | `tests/test_hunts.py`; `hunts/samples/`; `.github/workflows/ci.yml` | Open |
+| R-10 | External | Engineering workstations and domain controllers at the IT/OT boundary | APT living off the land with built-in tools (WMI, PowerShell, ntdsutil) to stage access to OT | T1047; T1059.001; T1003.003 | Native admin tools look legitimate and no behavioural rule watches them | 4 | 5 | 20 (High) | Sigma hunts for the technique chain on Sysmon/Windows telemetry in OpenSearch | 3 | 4 | 12 (Medium) | `hunts/H-001.yaml` to `hunts/H-003.yaml`; `docs/evidence/` | Open |
+| R-11 | External | Hosts sending telemetry to the SOC | Contact with infrastructure already attributed to an APT goes unflagged | T1071; T1105 | Telemetry is not compared with current threat intelligence | 4 | 4 | 16 (High) | PyMISP pulls APT indicators into a lookup; matching events are tagged `threat.indicator.matched` and their risk score raised | 2 | 3 | 6 (Low) | `scripts/misp_pull.py`; `enrich/`; `docs/evidence/` | Open |
+| R-12 | External | The SOC's own public-facing address | A service exposed by mistake is indexed by Shodan and used for initial access | T1595.002; T1190 | No outside-in view of what the SOC exposes | 3 | 3 | 9 (Medium) | Scheduled Shodan query on the owned IP; a new port or banner is flagged | 1 | 3 | 3 (Low) | `scripts/exposure_check.py`; `docs/evidence/` | Open |
+| R-13 | Operational | Detection rules drafted with an LLM from threat reports | Poisoned threat intelligence (a crafted MISP event or report) prompt-injects the LLM into writing a blind or weakened rule | ATLAS AML.T0051.001 (Indirect Prompt Injection) | Threat-report text is untrusted input but the LLM treats it as instruction | 3 | 5 | 15 (High) | LLM output arrives only as a pull request; the positive-sample test fails a blind rule; CODEOWNERS review; the LLM gets no tool access to MISP or OpenSearch | 2 | 3 | 6 (Low) | `tests/test_hunts.py`; `CODEOWNERS`; `docs/ai-governance.md` | Open |
 
 ## How each control lands in the repository
 
@@ -52,6 +59,30 @@ unless a job widens it.
 
 **R-05 and R-06.** See [docs/ai-governance.md](docs/ai-governance.md). Memory is context,
 not policy: the rules that matter are enforced by the harness before a tool runs.
+
+**R-07 (Lab 3).** The stack is declared in `compose.yaml` and built only by `make deploy`.
+A local root CA issues a leaf certificate per component, so OpenSearch, Dashboards and the
+front door authenticate each other with mTLS. Host ports come from `.env` and bind to
+127.0.0.1. The admin password exists in git only as SOPS/age ciphertext.
+
+**R-08 and R-09 (Lab 5).** A hunt is a YAML file, not a note in an analyst's head. It
+names the hypothesis, the ATT&CK techniques and the Sigma rule, and ships a positive and a
+negative sample. `tests/test_hunts.py` proves the rule fires on one and not the other, in
+CI on every pull request.
+
+**R-10 (Lab 5).** The first hunts follow a living-off-the-land chain typical of APTs that
+pre-position in critical infrastructure: WMI and PowerShell execution, then credential
+dumping with `ntdsutil`. The residual score stays Medium on purpose: behavioural hunts
+reduce dwell time but cannot guarantee detection.
+
+**R-11 and R-12 (Lab 6).** MISP is the live source. `scripts/misp_pull.py` pulls APT
+indicators into the enrichment lookup; a matching event is tagged and its risk score rises,
+while a clean event is untouched. That difference is the evidence that enrichment changes
+an outcome. Shodan checks only the project's own address.
+
+**R-13.** Any LLM, Claude Code included, that turns a threat report into a rule reads
+attacker-controllable text. The control does not trust the model: the rule only lands
+through a pull request, and a rule that no longer fires on its positive sample fails CI.
 
 ## Evidence notes
 
