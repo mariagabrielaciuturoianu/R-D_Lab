@@ -1,0 +1,5 @@
+# Only files under secrets/ ending in .enc.yaml are encrypted, to this age recipient (R-02).
+# The matching private key stays in ~/.config/sops/age/ on the owner's machine.
+creation_rules:
+  - path_regex: secrets/.*\.enc\.yaml$
+    age: age1pqnla499w8q6haw53ug5wj7zd0z5x9u2rm3gjk7cs5akn4kenumqn8k0lp

@@ -1,0 +1,30 @@
+# OpenSearch node configuration (R-07). Replaces the image default; no demo certificates.
+cluster.name: soc-hunting
+node.name: opensearch
+network.host: 0.0.0.0
+discovery.type: single-node
+bootstrap.memory_lock: true
+
+# Transport layer: node identity from the local root CA.
+plugins.security.ssl.transport.pemcert_filepath: certs/opensearch.pem
+plugins.security.ssl.transport.pemkey_filepath: certs/opensearch-key.pem
+plugins.security.ssl.transport.pemtrustedcas_filepath: certs/root-ca.pem
+plugins.security.ssl.transport.enforce_hostname_verification: false
+
+# REST layer: TLS with a client certificate required from every caller (mTLS).
+plugins.security.ssl.http.enabled: true
+plugins.security.ssl.http.pemcert_filepath: certs/opensearch.pem
+plugins.security.ssl.http.pemkey_filepath: certs/opensearch-key.pem
+plugins.security.ssl.http.pemtrustedcas_filepath: certs/root-ca.pem
+plugins.security.ssl.http.clientauth_mode: REQUIRE
+
+# Security index is initialised from config/opensearch-security/ on first start;
+# internal_users.yml is rendered from the SOPS secret at deploy time (R-02).
+plugins.security.allow_default_init_securityindex: true
+plugins.security.authcz.admin_dn:
+  - "CN=admin,OU=SOC,O=RDLab"
+plugins.security.nodes_dn:
+  - "CN=opensearch,OU=SOC,O=RDLab"
+plugins.security.restapi.roles_enabled: ["all_access", "security_rest_api_access"]
+plugins.security.system_indices.enabled: true
+plugins.security.audit.type: internal_opensearch

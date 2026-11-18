@@ -1,0 +1,22 @@
+# OpenSearch Dashboards configuration (R-07). The server password arrives as
+# OPENSEARCH_PASSWORD from the decrypted secret, never from this file.
+server.name: dashboards
+server.host: "0.0.0.0"
+
+# Analyst console served over TLS with a leaf from the local root CA.
+server.ssl.enabled: true
+server.ssl.certificate: /usr/share/opensearch-dashboards/config/certs/dashboards.pem
+server.ssl.key: /usr/share/opensearch-dashboards/config/certs/dashboards-key.pem
+
+# Dashboards -> OpenSearch: verify the server against the root CA and present a client cert.
+opensearch.hosts: ["https://opensearch:9200"]
+opensearch.ssl.verificationMode: full
+opensearch.ssl.certificateAuthorities: ["/usr/share/opensearch-dashboards/config/certs/root-ca.pem"]
+opensearch.ssl.certificate: /usr/share/opensearch-dashboards/config/certs/dashboards.pem
+opensearch.ssl.key: /usr/share/opensearch-dashboards/config/certs/dashboards-key.pem
+opensearch.ssl.alwaysPresentCertificate: true
+opensearch.username: "kibanaserver"
+opensearch.requestHeadersAllowlist: ["securitytenant", "Authorization"]
+
+opensearch_security.multitenancy.enabled: false
+opensearch_security.cookie.secure: true

@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Files rendered from secrets at deploy time, deleted by make destroy (R-02)
+.runtime/
+
 # Private keys and lab PKI material (R-02)
 keys.txt
 *.key
