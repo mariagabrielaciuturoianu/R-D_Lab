@@ -17,7 +17,8 @@ needs and a tested Sigma rule. MISP threat intelligence decides which hypotheses
 first and raises the risk score of telemetry that touches known APT infrastructure.
 
 > Rows R-01 to R-06 cover the governed AI workflow. Rows R-07 to R-13 cover the SOC
-> platform, the hunting function it serves, and the threat landscape it hunts.
+> platform, the hunting function it serves, and the threat landscape it hunts. R-14
+> records residual exposure of the public repository, accepted after review.
 
 ## Register
 
@@ -36,6 +37,7 @@ first and raises the risk score of telemetry that touches known APT infrastructu
 | R-11 | External | Hosts sending telemetry to the SOC | Contact with infrastructure already attributed to an APT goes unflagged | T1071; T1105 | Telemetry is not compared with current threat intelligence | 4 | 4 | 16 (High) | PyMISP pulls APT indicators into a lookup; matching events are tagged `threat.indicator.matched` and their risk score raised | 2 | 3 | 6 (Low) | `scripts/misp_pull.py`; `enrich/`; `docs/evidence/` | Open |
 | R-12 | External | The SOC's own public-facing address | A service exposed by mistake is indexed by Shodan and used for initial access | T1595.002; T1190 | No outside-in view of what the SOC exposes | 3 | 3 | 9 (Medium) | Scheduled Shodan query on the owned IP; a new port or banner is flagged | 1 | 3 | 3 (Low) | `scripts/exposure_check.py`; `docs/evidence/` | Open |
 | R-13 | Operational | Detection rules drafted with an LLM from threat reports | Poisoned threat intelligence (a crafted MISP event or report) prompt-injects the LLM into writing a blind or weakened rule | ATLAS AML.T0051.001 (Indirect Prompt Injection) | Threat-report text is untrusted input but the LLM treats it as instruction | 3 | 5 | 15 (High) | LLM output arrives only as a pull request; the positive-sample test fails a blind rule; CODEOWNERS review; the LLM gets no tool access to MISP or OpenSearch | 2 | 3 | 6 (Low) | `tests/test_hunts.py`; `CODEOWNERS`; `docs/ai-governance.md` | Open |
+| R-14 | Operational | Public repository content and metadata | Reconnaissance of the public repository: commit author email, superseded text kept in a merged pull request's original commits, password length inferred from SOPS ciphertext | T1593.003 | Repository is public by choice; GitHub keeps pull request commits after the branch is deleted; AES-GCM preserves plaintext length | 3 | 1 | 3 (Low) | Accepted. Public visibility approved by the instructor; nothing secret is committed (gitleaks history scan clean, keys and decrypted files git-ignored); the email is intended to be public; merged branches are deleted; passwords are at least 14 characters from 72 symbols, so length gives no practical advantage. Rotate to longer passwords with `FORCE=1 make secrets-init` if the threat model changes | 3 | 1 | 3 (Low) | `.gitignore`; `scripts/new-secret.sh`; `docs/evidence/R-02-gitleaks-blocks-commit.txt` | Accepted |
 
 ## How each control lands in the repository
 
