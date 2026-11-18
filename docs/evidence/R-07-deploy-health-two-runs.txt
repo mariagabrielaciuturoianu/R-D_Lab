@@ -1,0 +1,118 @@
+# Idempotence evidence (R-07): make destroy && make deploy && make health, twice, run by
+# the assistant through the Makefile. Yellow is expected on one node (replicas have no
+# second node); the second check proves a caller without a client certificate is refused.
+# Branch feat/lab3-iac @ f7c48c0 + working tree, 2026-11-18T20:44Z
+
+=========== RUN 1 ===========
+rm -rf .runtime
+./scripts/pki.sh certs
+./scripts/render-runtime.sh
+rendered .runtime (secrets decrypted for this deployment only)
+/Library/Developer/CommandLineTools/usr/bin/make --no-print-directory up
+docker compose --env-file config/stack.env  --env-file .runtime/.env.secrets up -d --wait --wait-timeout 180 opensearch
+ Volume soc-hunting_opensearch-data Creating
+ Volume soc-hunting_opensearch-data Creating
+ Network soc-hunting_soc Creating
+ Network soc-hunting_soc Creating
+ Volume soc-hunting_opensearch-data Created
+ Volume soc-hunting_opensearch-data Created
+ Network soc-hunting_soc Created
+ Network soc-hunting_soc Created
+ Container soc-hunting-opensearch-1 Creating
+ Container soc-hunting-opensearch-1 Created
+ Container soc-hunting-opensearch-1 Starting
+ Container soc-hunting-opensearch-1 Started
+ Container soc-hunting-opensearch-1 Waiting
+ Container soc-hunting-opensearch-1 Healthy
+docker compose --env-file config/stack.env  --env-file .runtime/.env.secrets up -d dashboards
+ Container soc-hunting-opensearch-1 Running
+ Container soc-hunting-dashboards-1 Creating
+ Container soc-hunting-dashboards-1 Created
+ Container soc-hunting-opensearch-1 Waiting
+ Container soc-hunting-opensearch-1 Healthy
+ Container soc-hunting-dashboards-1 Starting
+ Container soc-hunting-dashboards-1 Started
+OpenSearch is up; run make health. Dashboards: https://localhost (DASHBOARDS_PORT)
+./scripts/health.sh
+{
+  "cluster_name" : "soc-hunting",
+  "status" : "yellow",
+  "timed_out" : false,
+  "number_of_nodes" : 1,
+  "number_of_data_nodes" : 1,
+  "discovered_master" : true,
+  "discovered_cluster_manager" : true,
+  "active_primary_shards" : 4,
+  "active_shards" : 4,
+  "relocating_shards" : 0,
+  "initializing_shards" : 0,
+  "unassigned_shards" : 1,
+  "delayed_unassigned_shards" : 0,
+  "number_of_pending_tasks" : 0,
+  "number_of_in_flight_fetch" : 0,
+  "task_max_waiting_in_queue_millis" : 0,
+  "active_shards_percent_as_number" : 80.0
+}
+--- same request without a client certificate (must be refused):
+curl: (56) LibreSSL SSL_read: LibreSSL/3.3.6: error:1404C45C:SSL routines:ST_OK:reason(1116), errno 0
+refused, as required by clientauth_mode: REQUIRE
+(run 1: deploy+health took 12s)
+
+=========== RUN 2 ===========
+ Container soc-hunting-dashboards-1 Removed
+ Container soc-hunting-opensearch-1 Removed
+ Volume soc-hunting_opensearch-data Removed
+ Network soc-hunting_soc Removed
+rm -rf .runtime
+./scripts/pki.sh certs
+./scripts/render-runtime.sh
+rendered .runtime (secrets decrypted for this deployment only)
+/Library/Developer/CommandLineTools/usr/bin/make --no-print-directory up
+docker compose --env-file config/stack.env  --env-file .runtime/.env.secrets up -d --wait --wait-timeout 180 opensearch
+ Network soc-hunting_soc Creating
+ Network soc-hunting_soc Creating
+ Volume soc-hunting_opensearch-data Creating
+ Volume soc-hunting_opensearch-data Creating
+ Volume soc-hunting_opensearch-data Created
+ Volume soc-hunting_opensearch-data Created
+ Network soc-hunting_soc Created
+ Network soc-hunting_soc Created
+ Container soc-hunting-opensearch-1 Creating
+ Container soc-hunting-opensearch-1 Created
+ Container soc-hunting-opensearch-1 Starting
+ Container soc-hunting-opensearch-1 Started
+ Container soc-hunting-opensearch-1 Waiting
+ Container soc-hunting-opensearch-1 Healthy
+docker compose --env-file config/stack.env  --env-file .runtime/.env.secrets up -d dashboards
+ Container soc-hunting-opensearch-1 Running
+ Container soc-hunting-dashboards-1 Creating
+ Container soc-hunting-dashboards-1 Created
+ Container soc-hunting-opensearch-1 Waiting
+ Container soc-hunting-opensearch-1 Healthy
+ Container soc-hunting-dashboards-1 Starting
+ Container soc-hunting-dashboards-1 Started
+OpenSearch is up; run make health. Dashboards: https://localhost (DASHBOARDS_PORT)
+./scripts/health.sh
+{
+  "cluster_name" : "soc-hunting",
+  "status" : "yellow",
+  "timed_out" : false,
+  "number_of_nodes" : 1,
+  "number_of_data_nodes" : 1,
+  "discovered_master" : true,
+  "discovered_cluster_manager" : true,
+  "active_primary_shards" : 4,
+  "active_shards" : 4,
+  "relocating_shards" : 0,
+  "initializing_shards" : 0,
+  "unassigned_shards" : 1,
+  "delayed_unassigned_shards" : 0,
+  "number_of_pending_tasks" : 0,
+  "number_of_in_flight_fetch" : 0,
+  "task_max_waiting_in_queue_millis" : 0,
+  "active_shards_percent_as_number" : 80.0
+}
+--- same request without a client certificate (must be refused):
+curl: (56) LibreSSL SSL_read: LibreSSL/3.3.6: error:1404C45C:SSL routines:ST_OK:reason(1116), errno 0
+refused, as required by clientauth_mode: REQUIRE
+(run 2: deploy+health took 12s)
