@@ -24,6 +24,13 @@ services:
       - ./certs/opensearch-key.pem:/usr/share/opensearch/config/certs/opensearch-key.pem:ro
     ports:
       - "127.0.0.1:${OPENSEARCH_PORT}:9200"
+    # Ready means the REST layer completes an mTLS handshake and answers (401 without a user).
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' --cacert config/certs/root-ca.pem --cert config/certs/opensearch.pem --key config/certs/opensearch-key.pem https://localhost:9200 | grep -qE '^(200|401)$'"]
+      interval: 5s
+      timeout: 5s
+      retries: 36
+      start_period: 10s
     networks: [soc]
     restart: unless-stopped
 
@@ -41,7 +48,9 @@ services:
     ports:
       - "127.0.0.1:${DASHBOARDS_PORT}:5601"
     networks: [soc]
-    depends_on: [opensearch]
+    depends_on:
+      opensearch:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

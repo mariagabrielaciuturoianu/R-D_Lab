@@ -14,9 +14,19 @@ set -a
 . .runtime/.env.secrets
 set +a
 
-printf 'user = "admin:%s"\n' "$OPENSEARCH_ADMIN_PASSWORD" | curl -sS --fail -K - \
-  --cacert certs/root-ca.pem --cert certs/admin.pem --key certs/admin-key.pem \
-  "https://localhost:${OPENSEARCH_PORT}/_cluster/health?pretty"
+# Yellow is the expected ceiling on a single node: replica shards have no second node to
+# live on. Red, or no answer within ~90s, is a failure.
+health() {
+  printf 'user = "admin:%s"\n' "$OPENSEARCH_ADMIN_PASSWORD" | curl -sS -K - \
+    --cacert certs/root-ca.pem --cert certs/admin.pem --key certs/admin-key.pem \
+    "https://localhost:${OPENSEARCH_PORT}/_cluster/health?pretty&wait_for_status=yellow&timeout=30s"
+}
+# The REST layer can lag the container start; retry for up to ~90s before failing.
+for attempt in $(seq 1 18); do
+  if out=$(health 2>&1) && grep -q '"status"' <<<"$out"; then echo "$out"; break; fi
+  [ "$attempt" -eq 18 ] && { echo "$out" >&2; exit 1; }
+  sleep 5
+done
 
 echo "--- same request without a client certificate (must be refused):"
 if curl -sS --max-time 5 --cacert certs/root-ca.pem \
