@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt \
  && pip uninstall --yes pip \
  && adduser -D -H -u 10001 hunter
 
-USER hunter
+# Numeric UID (the "hunter" account) so the host and Kubernetes can enforce non-root.
+USER 10001
 ENTRYPOINT ["sigma"]
 CMD ["--help"]
