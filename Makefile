@@ -1,5 +1,5 @@
 # Default commands (see CLAUDE.md).
-.PHONY: lint test hooks venv pki secrets-init secrets deploy health destroy
+.PHONY: lint test hooks venv pki secrets-init secrets deploy health destroy toolkit
 
 PYTHON := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
@@ -27,6 +27,10 @@ lint:
 # Unit tests, including the guard hook regression suite (R-01..R-06).
 test:
 	$(PYTHON) -m pytest -v tests/
+
+# Hunt toolkit image (sigma-cli + PyMISP), the same build CI scans and signs (R-17).
+toolkit:
+	docker build -t hunt-toolkit:local toolkit/
 
 # Local root CA and leaf certificates for mTLS; keeps existing ones (R-07).
 pki:
