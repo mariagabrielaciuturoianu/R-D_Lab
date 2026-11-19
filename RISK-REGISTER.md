@@ -17,7 +17,8 @@ needs and a tested Sigma rule. MISP threat intelligence decides which hypotheses
 first and raises the risk score of telemetry that touches known APT infrastructure.
 
 > Rows R-01 to R-06 cover the governed AI workflow. Rows R-07 to R-13 cover the SOC
-> platform, the hunting function it serves, and the threat landscape it hunts. R-14
+> platform, the hunting function it serves, and the threat landscape it hunts. R-15 to
+> R-17 cover the CI/CD pipeline and the artefact it ships. R-14
 > records residual exposure of the public repository, accepted after review.
 
 ## Register
@@ -38,6 +39,9 @@ first and raises the risk score of telemetry that touches known APT infrastructu
 | R-12 | External | The SOC's own public-facing address | A service exposed by mistake is indexed by Shodan and used for initial access | T1595.002; T1190 | No outside-in view of what the SOC exposes | 3 | 3 | 9 (Medium) | Scheduled Shodan query on the owned IP; a new port or banner is flagged | 1 | 3 | 3 (Low) | `scripts/exposure_check.py`; `docs/evidence/` | Open |
 | R-13 | Operational | Detection rules drafted with an LLM from threat reports | Poisoned threat intelligence (a crafted MISP event or report) prompt-injects the LLM into writing a blind or weakened rule | ATLAS AML.T0051.001 (Indirect Prompt Injection) | Threat-report text is untrusted input but the LLM treats it as instruction | 3 | 5 | 15 (High) | LLM output arrives only as a pull request; the positive-sample test fails a blind rule; CODEOWNERS review; the LLM gets no tool access to MISP or OpenSearch | 2 | 3 | 6 (Low) | `tests/test_hunts.py`; `CODEOWNERS`; `docs/ai-governance.md` | Open |
 | R-14 | Operational | Public repository content and metadata | Reconnaissance of the public repository: commit author email, superseded text kept in a merged pull request's original commits, password length inferred from SOPS ciphertext | T1593.003 | Repository is public by choice; GitHub keeps pull request commits after the branch is deleted; AES-GCM preserves plaintext length | 3 | 1 | 3 (Low) | Accepted. Public visibility approved by the instructor; nothing secret is committed (gitleaks history scan clean, keys and decrypted files git-ignored); the email is intended to be public; merged branches are deleted; passwords are at least 14 characters from 72 symbols, so length gives no practical advantage. Rotate to longer passwords with `FORCE=1 make secrets-init` if the threat model changes | 3 | 1 | 3 (Low) | `.gitignore`; `scripts/new-secret.sh`; `docs/evidence/R-02-gitleaks-blocks-commit.txt` | Accepted |
+| R-15 | Operational | CI pipeline, its token and the artefacts it builds | A third-party action or CI tool release is replaced with code that steals secrets or tampers with builds (moved tags, as in the 2025 tj-actions and 2026 trivy-action compromises) | T1195.001 | Actions referenced by mutable tags; tools installed without versions; no audit of the workflow itself | 4 | 5 | 20 (High) | Every action pinned to a full commit SHA whose GitHub signature was verified at pin time, tag in a comment; scanner and linter versions pinned (Trivy binary, Semgrep, zizmor); zizmor audits every workflow; Dependabot proposes updates as pull requests after a 7-day cooldown; `tests/test_supply_chain.py` fails any unpinned `uses:` | 1 | 5 | 5 (Low) | `.github/workflows/ci.yml`; `.github/dependabot.yml`; `tests/test_supply_chain.py` | Implemented |
+| R-16 | Operational | Repository secrets and the workflow write token | A fork pull request or a crafted branch or tag name runs attacker code with repository secrets or a write token ("pwn request", template injection) | T1528 | `pull_request_target`, write tokens by default, `${{ }}` expressions inside shell scripts, credentials persisted by checkout | 3 | 5 | 15 (High) | No `pull_request_target`; top-level token read-only and widened per job (release only); `persist-credentials: false` on every checkout; values reach shell only through `env:`; approval required for external contributors' workflows | 1 | 4 | 4 (Low) | `.github/workflows/ci.yml`; `tests/test_supply_chain.py`; repository Actions settings | Implemented |
+| R-17 | Internal | Hunt toolkit image used by analysts (sigma-cli, PyMISP) | A vulnerable or tampered image reaches the analysts who run it | T1525; T1195.002 | Base images not pinned or scanned; artefacts not signed, so a swapped image is indistinguishable | 3 | 4 | 12 (Medium) | Base image pinned by digest; image runs as a non-root user and ships without pip; Trivy blocks HIGH/CRITICAL fixable findings and scans compose, Dockerfile and workflow config; release signs the image by digest with keyless Cosign and attaches a Syft SPDX SBOM. Signing decision: keyless, because the repository is public and the Rekor transparency log entry adds nothing an observer cannot already see | 1 | 4 | 4 (Low) | `toolkit/Dockerfile`; `.github/workflows/ci.yml` (`scan`, `release`) | Implemented |
 
 ## How each control lands in the repository
 
@@ -85,6 +89,15 @@ an outcome. Shodan checks only the project's own address.
 **R-13.** Any LLM, Claude Code included, that turns a threat report into a rule reads
 attacker-controllable text. The control does not trust the model: the rule only lands
 through a pull request, and a rule that no longer fires on its positive sample fails CI.
+
+**R-15 to R-17 (Lab 4).** `.github/workflows/ci.yml` runs on every pull request. `lint`
+(ShellCheck, Hadolint, Semgrep, zizmor) and `test` (pytest) run first; `scan` builds the
+hunt toolkit on a native arm64 runner and lets Trivy fail the run on a HIGH or CRITICAL
+fixable finding. On a `v*` tag, `release` pushes the image to GHCR, signs it by digest
+with keyless Cosign (an OIDC identity from the workflow, a short-lived Fulcio certificate,
+a public Rekor entry, no long-lived key to steal) and publishes the SBOM with the release.
+On GitHub Free the checks cannot be made required; the project never merges a red pull
+request, and the governance workflow plus the PR history prove it.
 
 ## Evidence notes
 

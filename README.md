@@ -56,6 +56,29 @@ make lint            # pre-commit on all files
 make test            # guard hook and compose policy tests
 ```
 
+## CI/CD pipeline (Lab 4)
+
+`.github/workflows/ci.yml` runs on every pull request; a `v*` tag also releases.
+
+| Job | What it blocks | Risk |
+|---|---|---|
+| `lint` / ShellCheck, Hadolint | Broken shell scripts, unsafe Dockerfile patterns | R-17 |
+| `lint` / Semgrep (`p/ci`) | Known insecure code patterns | R-17 |
+| `lint` / zizmor | Unpinned actions, persisted credentials, risky triggers, template injection, missing Dependabot cooldown | R-15, R-16 |
+| `test` / pytest | Guard hook regressions, unpinned images or actions, loopback/mTLS policy drift | R-01..R-07, R-15, R-16 |
+| `scan` / Trivy (arm64) | Toolkit image with fixable HIGH/CRITICAL CVEs; misconfigured compose, Dockerfile or workflows | R-07, R-17 |
+| `release` / Syft, Cosign | Unsigned or undocumented images reaching analysts | R-17 |
+
+Dependabot (`.github/dependabot.yml`) proposes action, image and pip updates as pull
+requests after a 7-day cooldown, so every update passes the same gates (R-15).
+
+The `toolkit/` image bundles sigma-cli (OpenSearch backend) and PyMISP:
+
+```bash
+make toolkit                                   # build locally
+docker run --rm hunt-toolkit:local list targets
+```
+
 ## Run the stack (Lab 3)
 
 Requirements: Docker Desktop (arm64), `sops`, `age`, `openssl`, and an age key in
