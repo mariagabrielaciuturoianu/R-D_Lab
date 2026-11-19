@@ -13,7 +13,10 @@ umask 077
 mkdir -p "$RUN"
 sops --decrypt --output-type dotenv "$SRC" > "$RUN/.env.secrets"
 
-set -a; . "$RUN/.env.secrets"; set +a
+set -a
+# shellcheck source=/dev/null
+. "$RUN/.env.secrets"
+set +a
 
 # htpasswd reads the password on stdin (-i), so it never appears in the process list.
 bcrypt() { printf '%s' "$1" | htpasswd -niBC 12 x | cut -d: -f2-; }
