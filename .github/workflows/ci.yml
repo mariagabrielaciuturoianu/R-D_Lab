@@ -54,6 +54,12 @@ jobs:
         with:
           persist-credentials: false
       - run: docker build -t hunt-toolkit:ci toolkit/
+      # A clean scan proves nothing if the tool cannot start: run it (R-17).
+      - name: Smoke test, the image must actually work
+        run: |
+          docker run --rm hunt-toolkit:ci version
+          docker run --rm hunt-toolkit:ci list targets | grep -q opensearch_lucene
+          docker run --rm --entrypoint python hunt-toolkit:ci -c "import pymisp"
       - name: Trivy image scan (R-17)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
