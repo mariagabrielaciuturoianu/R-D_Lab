@@ -66,6 +66,7 @@ make test            # guard hook and compose policy tests
 | `lint` / Semgrep (`p/ci`) | Known insecure code patterns | R-17 |
 | `lint` / zizmor | Unpinned actions, persisted credentials, risky triggers, template injection, missing Dependabot cooldown | R-15, R-16 |
 | `test` / pytest | Guard hook regressions, unpinned images or actions, loopback/mTLS policy drift | R-01..R-07, R-15, R-16 |
+| `scan` / smoke test (arm64) | A toolkit image that builds but cannot run sigma or import PyMISP | R-17 |
 | `scan` / Trivy (arm64) | Toolkit image with fixable HIGH/CRITICAL CVEs; misconfigured compose, Dockerfile or workflows | R-07, R-17 |
 | `release` / Syft, Cosign | Unsigned or undocumented images reaching analysts | R-17 |
 
