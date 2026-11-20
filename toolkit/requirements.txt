@@ -1,0 +1,6 @@
+# Hunt toolkit: converts Sigma hunt rules to OpenSearch queries (Lab 5) and pulls
+# indicators from MISP (Lab 6). Pinned exactly; Dependabot proposes updates (R-15).
+# sigma-cli 3.x: the OpenSearch backend still requires pySigma 1.x (sigma-cli 4 needs 2.x).
+sigma-cli==3.1.0
+pysigma-backend-opensearch==2.0.3
+pymisp==3.0.0

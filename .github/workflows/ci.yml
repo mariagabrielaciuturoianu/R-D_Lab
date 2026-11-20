@@ -1,0 +1,111 @@
+# CI for every pull request; build, sign and release on a v* tag.
+# Every job maps to a register row; see the table in README.md.
+name: ci
+on:
+  pull_request:
+    branches: [main]
+  push:
+    tags: ['v*']
+
+# The default token is read-only. Only the release job widens it (R-04, R-16).
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Every third-party action is pinned to a full commit SHA; the tag is only a comment (R-15).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # 2.0.0
+      - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: toolkit/Dockerfile
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Semgrep
+        run: pip install semgrep==1.186.0 && semgrep scan --config p/ci --error --metrics=off
+      - name: zizmor (the pipeline audits itself)
+        run: pip install zizmor==1.32.0 && zizmor --offline .
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - run: pip install -r requirements-dev.txt && python -m pytest -v tests/
+
+  scan:
+    # Native arm64 runner: the image is built and scanned for the platform it runs on.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker build -t hunt-toolkit:ci toolkit/
+      - name: Trivy image scan (R-17)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.2
+          image-ref: hunt-toolkit:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Trivy config scan of compose, Dockerfile and workflows (R-07, R-17)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.2
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    needs: [lint, test, scan]
+    permissions:
+      contents: write   # create the release
+      packages: write   # push the image to GHCR
+      id-token: write   # OIDC identity for keyless signing
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Image name (registry paths must be lowercase)
+        run: echo "IMG=ghcr.io/${GITHUB_REPOSITORY,,}/hunt-toolkit:${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push, then sign by digest, never by tag
+        run: |
+          docker build -t "$IMG" toolkit/
+          docker push "$IMG"
+          echo "DIGEST_REF=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMG")" >> "$GITHUB_ENV"
+      - uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          image: ${{ env.DIGEST_REF }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+      - run: cosign sign --yes "$DIGEST_REF"
+      - name: Release with generated notes and the SBOM
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" sbom.spdx.json
+          --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes

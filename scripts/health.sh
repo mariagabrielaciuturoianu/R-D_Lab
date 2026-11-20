@@ -8,9 +8,13 @@ if [ ! -f .runtime/.env.secrets ]; then
   exit 1
 fi
 
+# Files sourced here exist only at run time, so ShellCheck is told not to follow them.
 set -a
+# shellcheck source=/dev/null
 . config/stack.env
+# shellcheck source=/dev/null
 [ -f .env ] && . ./.env
+# shellcheck source=/dev/null
 . .runtime/.env.secrets
 set +a
 
