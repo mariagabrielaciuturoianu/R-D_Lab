@@ -77,6 +77,12 @@ def test_dockerfile_drops_root(path):
     assert users and users[-1] not in ("root", "0"), "image runs as root"
 
 
+def test_ci_runs_the_image_it_scans():
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    scan = ci.split("\n  scan:", 1)[1].split("\n  release:", 1)[0]
+    assert "docker run --rm hunt-toolkit:ci" in scan, "scan job never starts the image it ships"
+
+
 def test_every_dependabot_entry_has_a_cooldown():
     entries = DEPENDABOT.split("- package-ecosystem:")[1:]
     assert entries
