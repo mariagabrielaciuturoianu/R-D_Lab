@@ -1,9 +1,15 @@
-# Automated pull-request review with Claude (R-19). Runs on every non-draft pull request
-# from this repository and posts one advisory comment before the human CODEOWNERS review.
+# Automated pull-request review with Claude (R-19). Posts one advisory comment on every
+# non-draft pull request from this repository, before the human CODEOWNERS review.
 # Without the ANTHROPIC_API_KEY secret it skips with a notice instead of failing.
+#
+# pull_request_target, deliberately: the workflow definition, the review script, its rules
+# and its dependencies always come from the base branch, which has already been reviewed,
+# so a pull request cannot rewrite its own reviewer or reach the API key. No code from the
+# pull request is ever checked out or executed; its changes arrive only as diff text from
+# the API, which the model treats as untrusted data (R-13, R-16).
 name: ai-review
 on:
-  pull_request:
+  pull_request_target:  # zizmor: ignore[dangerous-triggers] base-only checkout, see header
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
 
@@ -12,7 +18,7 @@ permissions:
 
 jobs:
   review:
-    # Same-repository pull requests only: forks never receive the API key (R-16).
+    # Same-repository pull requests only: a fork never triggers a paid review (R-16).
     if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -25,10 +31,20 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.base.sha }}  # base branch only, never the PR head
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
+      # No secrets in this step: install hooks of dependencies never see the key or token.
+      - name: Install the hash-locked reviewer client
+        run: pip install --require-hashes -r requirements/review.txt
+      - name: Fetch the pull request diff as text
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: gh pr diff "$PR_NUMBER" --repo "$REPO" > "$RUNNER_TEMP/pr.diff"
       - name: Review the diff with Claude and comment
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -41,8 +57,6 @@ jobs:
             echo "::notice::ANTHROPIC_API_KEY is not set; automated review skipped"
             exit 0
           fi
-          pip install -r requirements/review.txt
-          gh pr diff "$PR_NUMBER" --repo "$REPO" > pr.diff
-          python scripts/ai_review.py pr.diff > review.md
-          cat review.md >> "$GITHUB_STEP_SUMMARY"
-          gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@review.md --silent
+          python scripts/ai_review.py "$RUNNER_TEMP/pr.diff" > "$RUNNER_TEMP/review.md"
+          cat "$RUNNER_TEMP/review.md" >> "$GITHUB_STEP_SUMMARY"
+          gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@"$RUNNER_TEMP/review.md" --silent
