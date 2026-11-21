@@ -1,0 +1,23 @@
+# R-16: pull_request_target is allowed only in ai-review.yml, and only with a base-only
+# checkout for same-repository pull requests. Each case adds a throwaway workflow, runs
+# the policy tests and deletes it. Generated 2026-11-21T15:51Z.
+
+### Case 1: a second, otherwise safe, pull_request_target workflow
+    >       assert users <= PULL_REQUEST_TARGET_ALLOWLIST, f"pull_request_target outside the allowlist: {users - PULL_REQUEST_TARGET_ALLOWLIST}"
+    E       AssertionError: pull_request_target outside the allowlist: {'zz-demo-pwn-request.yml'}
+    tests/test_supply_chain.py:49: AssertionError
+    FAILED tests/test_supply_chain.py::test_pull_request_target_only_in_the_reviewer
+    1 failed, 4 passed, 20 deselected in 0.22s
+
+### Case 2: the classic pwn request (checks out and runs pull request code, forks included)
+    >       assert users <= PULL_REQUEST_TARGET_ALLOWLIST, f"pull_request_target outside the allowlist: {users - PULL_REQUEST_TARGET_ALLOWLIST}"
+    E       AssertionError: pull_request_target outside the allowlist: {'zz-demo-pwn-request.yml'}
+    tests/test_supply_chain.py:49: AssertionError
+    E       AssertionError: assert ('pull_request.head.sha' not in 'name: demo-... make test\n'
+    tests/test_supply_chain.py:59: AssertionError
+    FAILED tests/test_supply_chain.py::test_pull_request_target_only_in_the_reviewer
+    FAILED tests/test_supply_chain.py::test_pull_request_target_never_checks_out_pull_request_code[.github/workflows/zz-demo-pwn-request.yml]
+    2 failed, 3 passed, 20 deselected in 0.14s
+
+### Control: the committed workflows
+    4 passed, 16 deselected in 0.12s

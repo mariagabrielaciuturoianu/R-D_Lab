@@ -41,6 +41,14 @@ def test_checkout_never_persists_credentials(path):
             assert re.search(r"persist-credentials:\s*false", step), "checkout keeps the token in .git/config"
 
 
+PULL_REQUEST_TARGET_ALLOWLIST = {"ai-review.yml"}
+
+
+def test_pull_request_target_only_in_the_reviewer():
+    users = {p.name for p in WORKFLOWS if "pull_request_target" in p.read_text()}
+    assert users <= PULL_REQUEST_TARGET_ALLOWLIST, f"pull_request_target outside the allowlist: {users - PULL_REQUEST_TARGET_ALLOWLIST}"
+
+
 @pytest.mark.parametrize("path", WORKFLOWS, ids=ids(WORKFLOWS))
 def test_pull_request_target_never_checks_out_pull_request_code(path):
     # pull_request_target runs with secrets; it is safe only when no PR code is checked out
