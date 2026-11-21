@@ -1,0 +1,22 @@
+# Hunt hypothesis (R-08): what we expect an APT to do, how we would see it, and what
+# result confirms or refutes it. The Sigma rule is the executable form of the hypothesis.
+id: H-001
+title: Remote execution through WMI on engineering hosts
+hypothesis: >
+  An actor that pre-positions in critical infrastructure is moving laterally with remote
+  WMI (wmic /node:<host> process call create), so shells appear as children of
+  WmiPrvSE.exe on engineering workstations and domain controllers.
+threat_actors:
+  - {name: Volt Typhoon, mitre_group: G1017}
+  - {name: Sandworm Team, mitre_group: G0034}
+techniques: [T1047]
+data_sources:
+  - Sysmon event 1 (process creation), normalised to ECS process.*
+rule: detections/sigma/H-001-wmi-spawns-shell.yml
+query: detections/opensearch/H-001-wmi-spawns-shell.json
+samples:
+  positive: tests/samples/hunts/H-001-positive.ndjson
+  negative: tests/samples/hunts/H-001-negative.ndjson
+confirms: Shells under WmiPrvSE.exe with no matching change ticket or management agent.
+refutes: Every hit traces to a known management agent (SCCM, backup) on its schedule.
+base_priority: 3   # 1 highest; Lab 6 raises priority when MISP reports an active campaign

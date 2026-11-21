@@ -1,0 +1,19 @@
+# Hunt hypothesis (R-08). See H-001.yaml for the format.
+id: H-003
+title: Domain credential theft with ntdsutil IFM
+hypothesis: >
+  Before pivoting into OT, the actor takes every domain credential offline by copying
+  NTDS.dit with ntdsutil "ac i ntds" ifm "create full <path>" on a domain controller.
+threat_actors:
+  - {name: Volt Typhoon, mitre_group: G1017}
+techniques: [T1003.003]
+data_sources:
+  - Sysmon event 1 (process creation), normalised to ECS process.*
+rule: detections/sigma/H-003-ntdsutil-ifm.yml
+query: detections/opensearch/H-003-ntdsutil-ifm.json
+samples:
+  positive: tests/samples/hunts/H-003-positive.ndjson
+  negative: tests/samples/hunts/H-003-negative.ndjson
+confirms: An IFM copy outside a planned DC promotion, especially into a temp directory.
+refutes: The copy matches a documented DC build from media.
+base_priority: 2

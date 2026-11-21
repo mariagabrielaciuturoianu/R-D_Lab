@@ -1,0 +1,14 @@
+{
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "query_string": {
+                        "query": "(process.name:(powershell.exe OR pwsh.exe)) AND (process.command_line:(*\\ \\-enc* OR *\\ \\-e\\ * OR *\\ \\-ec\\ *))",
+                        "analyze_wildcard": true
+                    }
+                }
+            ]
+        }
+    }
+}

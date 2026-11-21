@@ -1,0 +1,14 @@
+{
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "query_string": {
+                        "query": "process.parent.name:WmiPrvSE.exe AND (process.name:(cmd.exe OR powershell.exe OR pwsh.exe))",
+                        "analyze_wildcard": true
+                    }
+                }
+            ]
+        }
+    }
+}
