@@ -50,6 +50,9 @@ def risk_index():
     return "\n".join(f"{rid} ({reg}): {asset.strip()}" for rid, reg, asset in rows)
 
 
+FENCE_TAGS = re.compile(r"<(/?)(diff|project_rules|risk_register_ids)", re.IGNORECASE)
+
+
 def build_prompt(diff, max_chars=MAX_DIFF_CHARS):
     """Return (user prompt, truncation note or None). Never truncates silently."""
     note = None
@@ -57,6 +60,9 @@ def build_prompt(diff, max_chars=MAX_DIFF_CHARS):
         note = (f"The diff is {len(diff):,} characters; only the first {max_chars:,} were reviewed. "
                 "Review the rest by hand or split the pull request.")
         diff = diff[:max_chars]
+    # The diff is attacker-controlled: neutralise any tag that could close the <diff> fence
+    # early or forge a <project_rules> block after it (R-13).
+    diff = FENCE_TAGS.sub(lambda m: f"<{m.group(1)}​{m.group(2)}", diff)
     rules = (ROOT / "CLAUDE.md").read_text()
     prompt = (f"<project_rules>\n{rules}\n</project_rules>\n\n"
               f"<risk_register_ids>\n{risk_index()}\n</risk_register_ids>\n\n"
