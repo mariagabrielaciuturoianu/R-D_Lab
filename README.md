@@ -155,8 +155,9 @@ make monitor-down
 ```
 
 Prometheus probes OpenSearch and Dashboards every 15 seconds through a blackbox prober.
-Every link (Prometheus to prober, prober to OpenSearch, Prometheus to Alertmanager) is TLS
-from the project root CA with client certificates. The prober's `monitor` certificate
+Every machine-to-machine link (Prometheus to prober, prober to OpenSearch, Prometheus to
+Alertmanager) is TLS from the project root CA with client certificates; the two web UIs
+also accept the analyst's browser on loopback without one (accepted, see R-18). The prober's `monitor` certificate
 completes the mTLS handshake but is granted no data, so monitoring needs no password.
 Alerts: `SocServiceDown` (probe failing for 30s), `MonitoringTargetDown`,
 `CertificateExpiresSoon` (14 days).
@@ -165,8 +166,11 @@ The `ai-review` workflow sends each same-repository pull request diff, with `CLA
 the register's risk IDs, to Claude and posts the review as a comment before the human
 CODEOWNERS review. It needs the repository secret `ANTHROPIC_API_KEY` (skipped with a notice
 otherwise); the optional repository variable `REVIEW_MODEL` selects the model (default
-`claude-opus-5-5`; `claude-sonnet-5-5` or `claude-haiku-5-5` cost less). The job may only
-comment, never approve or merge, and treats the diff as untrusted data.
+`claude-opus-5-5`; `claude-sonnet-5-5` or `claude-haiku-5-5` cost less). It runs on
+`pull_request_target` with a base-only checkout, so the reviewer, its rules and its
+hash-locked dependencies always come from `main`: a pull request cannot rewrite its own
+reviewer or reach the key. The job may comment but never approve or merge, and treats the
+diff as untrusted data. Changes to the reviewer itself take effect after they merge.
 
 ## Run the stack (Lab 3)
 
