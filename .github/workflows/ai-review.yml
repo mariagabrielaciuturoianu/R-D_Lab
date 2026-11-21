@@ -18,7 +18,10 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      issues: write   # comment on the pull request; cannot approve, request changes or merge
+      # Commenting on a pull request requires pull-requests:write. Approval is still
+      # impossible: the repository setting "Allow GitHub Actions to create and approve pull
+      # requests" is off, so GitHub rejects any approval from this token. No merge either.
+      pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -42,6 +45,4 @@ jobs:
           gh pr diff "$PR_NUMBER" --repo "$REPO" > pr.diff
           python scripts/ai_review.py pr.diff > review.md
           cat review.md >> "$GITHUB_STEP_SUMMARY"
-          # REST issue-comment endpoint: works with issues:write alone. (gh pr comment uses a
-          # GraphQL mutation that would need pull-requests:write, which can also approve.)
           gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@review.md --silent

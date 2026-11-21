@@ -31,10 +31,12 @@ def test_reviewer_knows_every_risk_id():
     assert ids and all(rid in index for rid in ids)
 
 
-def test_review_job_can_comment_but_never_approve_or_push():
+def test_review_job_can_comment_but_never_push():
+    # pull-requests:write is the minimum GitHub accepts for a PR comment; approval is blocked
+    # by the repository setting that forbids Actions from approving pull requests.
     job = WORKFLOW.split("\n  review:", 1)[1]
     grants = dict(re.findall(r"^\s{6}([\w-]+):\s*(\w+)", job.split("steps:")[0], re.M))
-    assert grants == {"contents": "read", "issues": "write"}, grants
+    assert grants == {"contents": "read", "pull-requests": "write"}, grants
 
 
 def test_review_job_never_runs_for_forks_or_without_a_key():
