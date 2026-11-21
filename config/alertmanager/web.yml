@@ -1,0 +1,7 @@
+# Alertmanager UI and API: TLS from the root CA. Prometheus authenticates with its client
+# certificate; the analyst's browser on loopback may connect without one.
+tls_server_config:
+  cert_file: /certs/alertmanager.pem
+  key_file: /certs/alertmanager-key.pem
+  client_ca_file: /certs/root-ca.pem
+  client_auth_type: VerifyClientCertIfGiven

@@ -1,0 +1,15 @@
+# Probe modules (R-18). The probe presents the "monitor" client certificate, so it passes
+# OpenSearch's mTLS requirement, and accepts 401: reachable and authenticating, but the
+# monitoring identity is granted no data.
+modules:
+  https_mtls:
+    prober: http
+    timeout: 5s
+    http:
+      method: GET
+      valid_status_codes: [200, 401]
+      fail_if_not_ssl: true
+      tls_config:
+        ca_file: /certs/root-ca.pem
+        cert_file: /certs/monitor.pem
+        key_file: /certs/monitor-key.pem

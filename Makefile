@@ -1,6 +1,6 @@
 # Default commands (see CLAUDE.md).
 .PHONY: lint test hooks venv pki secrets-init secrets deploy health destroy toolkit queries hunt \
-        misp-secrets intel-secret misp-up misp-down intel exposure
+        misp-secrets intel-secret misp-up misp-down intel exposure monitor-up monitor-down alert-demo
 
 PYTHON := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 SIGMA := $(if $(wildcard .venv/bin/sigma),.venv/bin/sigma,sigma)
@@ -14,8 +14,9 @@ export SOPS_AGE_KEY_FILE ?= $(HOME)/.config/sops/age/keys.txt
 # Non-secret settings, an optional local override, then the decrypted secret (R-02, R-07).
 ENV_FILES := --env-file config/stack.env $(if $(wildcard .env),--env-file .env) \
              $(if $(wildcard .runtime/.env.secrets),--env-file .runtime/.env.secrets)
-COMPOSE := docker compose $(ENV_FILES)
-MISP_COMPOSE := docker compose -f compose.misp.yaml --env-file config/stack.env \
+# Compose files live in deploy/; --project-directory keeps their ./ paths repo-relative.
+COMPOSE := docker compose --project-directory . -f deploy/compose.yaml $(ENV_FILES)
+MISP_COMPOSE := docker compose --project-directory . -f deploy/compose.misp.yaml --env-file config/stack.env \
                 $(if $(wildcard .runtime/.env.misp),--env-file .runtime/.env.misp)
 
 # Install the pre-commit hooks into this clone (R-01, R-02).
@@ -24,7 +25,7 @@ hooks:
 
 # Local virtualenv with pinned test dependencies.
 venv:
-	$(BOOTSTRAP_PYTHON) -m venv .venv && .venv/bin/pip install -r requirements-dev.txt -r requirements-intel.txt
+	$(BOOTSTRAP_PYTHON) -m venv .venv && .venv/bin/pip install -r requirements/dev.txt -r requirements/intel.txt
 
 # gitleaks, no-commit-to-branch and file hygiene on every file (R-01, R-02).
 lint:
@@ -77,7 +78,7 @@ health:
 
 # Removes containers, network, data volume and every decrypted file (R-02).
 destroy:
-	-$(COMPOSE) down -v --remove-orphans
+	-$(COMPOSE) --profile monitoring down -v --remove-orphans
 	rm -f .runtime/.env.secrets .runtime/internal_users.yml
 
 # --- Threat intelligence (Lab 6) -------------------------------------------------------
@@ -109,3 +110,17 @@ intel:
 exposure:
 	./scripts/render-misp-runtime.sh
 	$(PYTHON) scripts/exposure_check.py
+
+# --- Monitoring (Lab 7) ------------------------------------------------------------------
+# Prometheus, Alertmanager and the blackbox prober, every link mTLS from the root CA (R-18).
+monitor-up: pki
+	$(COMPOSE) --profile monitoring up -d --wait prometheus alertmanager blackbox
+	@set -a; . config/stack.env; if [ -f .env ]; then . ./.env; fi; \
+	  echo "Prometheus https://localhost:$$PROMETHEUS_PORT  Alertmanager https://localhost:$$ALERTMANAGER_PORT"
+
+monitor-down:
+	-$(COMPOSE) --profile monitoring rm -sf prometheus alertmanager blackbox
+
+# Stop OpenSearch, watch SocServiceDown fire in Alertmanager, start it, watch it resolve.
+alert-demo:
+	./scripts/alert_demo.sh

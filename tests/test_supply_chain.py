@@ -42,8 +42,16 @@ def test_checkout_never_persists_credentials(path):
 
 
 @pytest.mark.parametrize("path", WORKFLOWS, ids=ids(WORKFLOWS))
-def test_no_pull_request_target(path):
-    assert "pull_request_target" not in path.read_text()
+def test_pull_request_target_never_checks_out_pull_request_code(path):
+    # pull_request_target runs with secrets; it is safe only when no PR code is checked out
+    # or executed, and only for same-repository pull requests (Lab 4 rule, R-16).
+    text = path.read_text()
+    if "pull_request_target" not in text:
+        return
+    assert "pull_request.head.sha" not in text and "pull_request.head.ref" not in text
+    assert "github.head_ref" not in text and "refs/pull/" not in text
+    assert "ref: ${{ github.event.pull_request.base.sha }}" in text
+    assert "head.repo.full_name == github.repository" in text
 
 
 @pytest.mark.parametrize("path", WORKFLOWS, ids=ids(WORKFLOWS))

@@ -10,7 +10,7 @@ You are an expert security engineer assisting with a self-hosted infrastructure-
 - **Actions and hooks:** Every third-party GitHub Action and pre-commit hook is pinned to a full commit SHA with the tag in a trailing comment. Every workflow declares a least-privilege `permissions:` block.
 - **Secret Management:** Secrets must be encrypted at rest using SOPS and age. Only ciphertext under `secrets/` is committed.
 - **Networking:** All internal component communication must use mTLS with leaf certificates signed by a local Root CA.
-- **Layout:** Workflows in `.github/workflows/`, tests in `tests/`, docs and evidence in `docs/`.
+- **Layout:** Compose files in `deploy/` (run through `make`), service config in `config/`, scripts in `scripts/`, hunts in `hunts/` with rules in `detections/`, tests in `tests/`, pinned Python dependencies in `requirements/`, docs and evidence in `docs/`, GitHub policy files (workflows, CODEOWNERS, SECURITY, CONTRIBUTING) in `.github/`. Keep the repository root to the files tools expect there.
 
 ## Risk Register
 Every change references the risk IDs it addresses (see `RISK-REGISTER.md`), in the commit subject and in the pull request description. A new control without a register row is incomplete.

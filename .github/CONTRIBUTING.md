@@ -1,7 +1,7 @@
 # Contributing
 
 Every change, from a person or an AI agent, follows the same path. Each rule below answers
-a row in [RISK-REGISTER.md](RISK-REGISTER.md).
+a row in [RISK-REGISTER.md](../RISK-REGISTER.md).
 
 ## Workflow
 

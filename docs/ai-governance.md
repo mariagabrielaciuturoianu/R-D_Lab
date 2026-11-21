@@ -24,7 +24,7 @@ not compel it. Prose can be overridden by a more convincing poisoned instruction
 
 | Layer | Control | File |
 |---|---|---|
-| Review | Memory, skills, hooks and settings are code-owned; every change arrives in a PR | `CODEOWNERS` |
+| Review | Memory, skills, hooks and settings are code-owned; every change arrives in a PR | `.github/CODEOWNERS` |
 | Harness: permission rules | `deny` rules on secret paths, force push, push to `main`, `--no-verify` | `.claude/settings.json` |
 | Harness: PreToolUse hook | Runs before every Read/Edit/Write/Bash call and exits 2 to block: secret paths (R-06), force push (R-03), push to `main` (R-01), `--no-verify` (R-02), edits to the hook or settings themselves (R-05) | `.claude/hooks/guard.sh` |
 | Server side | Governance workflow fails any commit on `main` without a merged PR | `.github/workflows/governance.yml` |

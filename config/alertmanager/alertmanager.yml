@@ -1,0 +1,12 @@
+# Alertmanager (R-18). The lab has no mail or chat integration, so alerts are routed to a
+# named receiver and are visible in the Alertmanager UI and API. A real SOC adds a webhook,
+# email or pager integration to soc-oncall.
+route:
+  receiver: soc-oncall
+  group_by: [alertname, instance]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 4h
+
+receivers:
+  - name: soc-oncall

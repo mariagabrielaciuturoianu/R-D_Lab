@@ -1,0 +1,2 @@
+# Top-level dependency of the reviewer; requirements/review.txt is the hash-locked result.
+anthropic==2.12.0
