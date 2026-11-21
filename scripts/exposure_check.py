@@ -23,6 +23,8 @@ from stack_client import ROOT, runtime
 
 API = "https://api.shodan.io"
 INTERNETDB = "https://internetdb.shodan.io"
+# InternetDB's CDN rejects Python's default User-Agent with 403; identify the tool honestly.
+HEADERS = {"User-Agent": "rdlab-exposure-check/1.0 (+https://github.com/mariagabrielaciuturoianu/R-D_Lab)"}
 
 
 class Forbidden(Exception):
@@ -31,7 +33,7 @@ class Forbidden(Exception):
 
 def get(url, label):
     try:
-        with urllib.request.urlopen(url, timeout=30) as resp:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=HEADERS), timeout=30) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as err:
         if err.code == 404:
