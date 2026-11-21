@@ -1,0 +1,116 @@
+# MISP threat-intelligence platform (Lab 6, R-11). Run only through make misp-up / misp-down.
+# Minimal subset of upstream misp-docker: database, cache, core and web front end; no mail,
+# modules or guard. Images pinned by linux/arm64 digest; HTTPS on 127.0.0.1 only, with a
+# leaf certificate from the project root CA (scripts/pki.sh); every password is generated
+# by scripts/new-misp-secret.sh and arrives from .runtime/.env.misp.
+name: soc-misp
+
+services:
+  redis:
+    # ghcr.io/valkey-io/valkey:7.2 (linux/arm64)
+    image: ghcr.io/valkey-io/valkey@sha256:84b477b1a0f2a96d4aab520afa6461db46ff8f1d3a223088c58998b9a7aff209
+    platform: linux/arm64
+    command: ["sh", "-c", "exec valkey-server --requirepass \"$$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: "${MISP_REDIS_PASSWORD:-}"
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    volumes:
+      - misp-cache:/data
+    networks: [misp]
+    restart: unless-stopped
+
+  db:
+    # ghcr.io/mariadb/mariadb:10.11 (linux/arm64)
+    image: ghcr.io/mariadb/mariadb@sha256:c956cbf6ece35067ff69c799c9934813f8b62ac3fd8b426d9909b3a50bd94840
+    platform: linux/arm64
+    environment:
+      MYSQL_USER: misp
+      MYSQL_DATABASE: misp
+      MYSQL_PASSWORD: "${MISP_MYSQL_PASSWORD:-}"
+      MYSQL_ROOT_PASSWORD: "${MISP_MYSQL_ROOT_PASSWORD:-}"
+    command: ["--innodb-buffer-pool-size=512M", "--innodb-log-file-size=256M"]
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin --user=misp --password=\"$$MYSQL_PASSWORD\" status"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 30s
+    volumes:
+      - misp-db:/var/lib/mysql
+    networks: [misp]
+    restart: unless-stopped
+
+  misp-core:
+    # ghcr.io/misp/misp-docker/misp-core:v2.5.52 (linux/arm64)
+    image: ghcr.io/misp/misp-docker/misp-core@sha256:97f5134b5435c2052b681c63ab6e651c1a1dded94622efaff761fa947d66b599
+    platform: linux/arm64
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    environment:
+      BASE_URL: "https://localhost:${MISP_HTTPS_PORT}"
+      DISABLE_IPV6: "true"
+      ADMIN_EMAIL: admin@admin.test
+      ADMIN_ORG: RDLab SOC
+      ADMIN_PASSWORD: "${MISP_ADMIN_PASSWORD:-}"
+      ADMIN_KEY: "${MISP_ADMIN_KEY:-}"
+      MYSQL_HOST: db
+      MYSQL_USER: misp
+      MYSQL_DATABASE: misp
+      MYSQL_PASSWORD: "${MISP_MYSQL_PASSWORD:-}"
+      REDIS_HOST: redis
+      REDIS_PASSWORD: "${MISP_REDIS_PASSWORD:-}"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/9002'"]
+      interval: 10s
+      timeout: 3s
+      retries: 90
+      start_period: 120s
+    volumes:
+      - misp-config:/var/www/MISP/app/Config
+      - misp-logs:/var/www/MISP/app/tmp/logs
+      - misp-files:/var/www/MISP/app/files
+      - misp-gnupg:/var/www/MISP/.gnupg
+    networks: [misp]
+    restart: unless-stopped
+
+  misp-nginx:
+    # ghcr.io/misp/misp-docker/misp-nginx:v2.5.52 (linux/arm64)
+    image: ghcr.io/misp/misp-docker/misp-nginx@sha256:58d57e2de58db479d66fced3ba22bfc254804c8e33a85d0bbeb426d1cf7f443f
+    platform: linux/arm64
+    depends_on:
+      misp-core: {condition: service_healthy}
+    environment:
+      BASE_URL: "https://localhost:${MISP_HTTPS_PORT}"
+      DISABLE_IPV6: "true"
+    ports:
+      - "127.0.0.1:${MISP_HTTPS_PORT}:8443"
+    volumes:
+      - ./certs/misp.pem:/etc/nginx/certs/cert.pem:ro
+      - ./certs/misp-key.pem:/etc/nginx/certs/key.pem:ro
+    tmpfs:
+      - /etc/nginx/conf.d:mode=0755,uid=101,gid=101
+      - /var/cache/nginx:mode=0755,uid=101,gid=101
+      - /tmp:mode=1777
+    user: nginx
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    networks: [misp]
+    restart: unless-stopped
+
+volumes:
+  misp-cache:
+  misp-db:
+  misp-config:
+  misp-logs:
+  misp-files:
+  misp-gnupg:
+
+networks:
+  misp:
+    driver: bridge
