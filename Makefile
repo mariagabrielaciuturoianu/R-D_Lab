@@ -1,5 +1,6 @@
 # Default commands (see CLAUDE.md).
-.PHONY: lint test hooks venv pki secrets-init secrets deploy health destroy toolkit queries hunt
+.PHONY: lint test hooks venv pki secrets-init secrets deploy health destroy toolkit queries hunt \
+        misp-secrets intel-secret misp-up misp-down intel exposure
 
 PYTHON := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 SIGMA := $(if $(wildcard .venv/bin/sigma),.venv/bin/sigma,sigma)
@@ -14,6 +15,8 @@ export SOPS_AGE_KEY_FILE ?= $(HOME)/.config/sops/age/keys.txt
 ENV_FILES := --env-file config/stack.env $(if $(wildcard .env),--env-file .env) \
              $(if $(wildcard .runtime/.env.secrets),--env-file .runtime/.env.secrets)
 COMPOSE := docker compose $(ENV_FILES)
+MISP_COMPOSE := docker compose -f compose.misp.yaml --env-file config/stack.env \
+                $(if $(wildcard .runtime/.env.misp),--env-file .runtime/.env.misp)
 
 # Install the pre-commit hooks into this clone (R-01, R-02).
 hooks:
@@ -21,7 +24,7 @@ hooks:
 
 # Local virtualenv with pinned test dependencies.
 venv:
-	$(BOOTSTRAP_PYTHON) -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+	$(BOOTSTRAP_PYTHON) -m venv .venv && .venv/bin/pip install -r requirements-dev.txt -r requirements-intel.txt
 
 # gitleaks, no-commit-to-branch and file hygiene on every file (R-01, R-02).
 lint:
@@ -75,4 +78,34 @@ health:
 # Removes containers, network, data volume and every decrypted file (R-02).
 destroy:
 	-$(COMPOSE) down -v --remove-orphans
-	rm -rf .runtime
+	rm -f .runtime/.env.secrets .runtime/internal_users.yml
+
+# --- Threat intelligence (Lab 6) -------------------------------------------------------
+# Random MISP passwords and admin API key, straight into SOPS ciphertext (R-02).
+misp-secrets:
+	./scripts/new-misp-secret.sh
+
+# Shodan API key, typed once without echo, stored as SOPS ciphertext (R-02, R-12).
+intel-secret:
+	./scripts/new-intel-secret.sh
+
+# MISP on https://localhost:$MISP_HTTPS_PORT; the first boot takes several minutes (R-11).
+misp-up: pki
+	./scripts/render-misp-runtime.sh
+	$(MAKE) --no-print-directory misp-start
+
+misp-start:
+	$(MISP_COMPOSE) up -d --wait --wait-timeout 1200
+
+misp-down:
+	-$(MISP_COMPOSE) down -v --remove-orphans
+	rm -f .runtime/.env.misp
+
+# Seed the campaign event, pull indicators, enrich telemetry, reorder hunts (R-08, R-11).
+intel:
+	$(PYTHON) scripts/intel.py
+
+# Outside-in view of the project's own public IP via Shodan (R-12).
+exposure:
+	./scripts/render-misp-runtime.sh
+	$(PYTHON) scripts/exposure_check.py
