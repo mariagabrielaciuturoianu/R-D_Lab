@@ -7,7 +7,7 @@ set -euo pipefail
 # shellcheck source=/dev/null
 . config/stack.env
 AM="https://localhost:${ALERTMANAGER_PORT}/api/v2/alerts?filter=alertname%3D%22SocServiceDown%22"
-COMPOSE=(docker compose --env-file config/stack.env)
+COMPOSE=(docker compose --project-directory . -f deploy/compose.yaml --env-file config/stack.env)
 [ -f .runtime/.env.secrets ] && COMPOSE+=(--env-file .runtime/.env.secrets)
 
 firing() { curl -sS --cacert certs/root-ca.pem "$AM" | jq -r '.[] | select(.status.state=="active") | .labels.instance'; }

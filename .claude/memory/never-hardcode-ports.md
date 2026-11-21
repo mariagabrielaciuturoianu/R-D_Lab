@@ -5,7 +5,7 @@ metadata:
   type: feedback
 ---
 
-Never write a literal host port in `compose.yaml`, nginx configs or scripts. Use
+Never write a literal host port in `deploy/compose.yaml`, nginx configs or scripts. Use
 `"127.0.0.1:${DASHBOARDS_PORT}:5601"` and define the value in `config/stack.env`
 (committed, non-secret); a developer may override it in a local `.env` (git-ignored).
 `tests/test_compose_policy.py` fails on any other binding.

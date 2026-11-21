@@ -14,8 +14,9 @@ export SOPS_AGE_KEY_FILE ?= $(HOME)/.config/sops/age/keys.txt
 # Non-secret settings, an optional local override, then the decrypted secret (R-02, R-07).
 ENV_FILES := --env-file config/stack.env $(if $(wildcard .env),--env-file .env) \
              $(if $(wildcard .runtime/.env.secrets),--env-file .runtime/.env.secrets)
-COMPOSE := docker compose $(ENV_FILES)
-MISP_COMPOSE := docker compose -f compose.misp.yaml --env-file config/stack.env \
+# Compose files live in deploy/; --project-directory keeps their ./ paths repo-relative.
+COMPOSE := docker compose --project-directory . -f deploy/compose.yaml $(ENV_FILES)
+MISP_COMPOSE := docker compose --project-directory . -f deploy/compose.misp.yaml --env-file config/stack.env \
                 $(if $(wildcard .runtime/.env.misp),--env-file .runtime/.env.misp)
 
 # Install the pre-commit hooks into this clone (R-01, R-02).
@@ -24,7 +25,7 @@ hooks:
 
 # Local virtualenv with pinned test dependencies.
 venv:
-	$(BOOTSTRAP_PYTHON) -m venv .venv && .venv/bin/pip install -r requirements-dev.txt -r requirements-intel.txt
+	$(BOOTSTRAP_PYTHON) -m venv .venv && .venv/bin/pip install -r requirements/dev.txt -r requirements/intel.txt
 
 # gitleaks, no-commit-to-branch and file hygiene on every file (R-01, R-02).
 lint:

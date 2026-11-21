@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-COMPOSE_FILES = sorted(ROOT.glob("compose*.yaml"))
-COMPOSE = (ROOT / "compose.yaml").read_text()
+COMPOSE_FILES = sorted((ROOT / "deploy").glob("compose*.yaml"))
+COMPOSE = (ROOT / "deploy" / "compose.yaml").read_text()
 OPENSEARCH = (ROOT / "config" / "opensearch.yml").read_text()
 DASHBOARDS = (ROOT / "config" / "opensearch_dashboards.yml").read_text()
 each_compose = pytest.mark.parametrize("path", COMPOSE_FILES, ids=lambda p: p.name)

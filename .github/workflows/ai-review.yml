@@ -38,7 +38,7 @@ jobs:
             echo "::notice::ANTHROPIC_API_KEY is not set; automated review skipped"
             exit 0
           fi
-          pip install -r requirements-review.txt
+          pip install -r requirements/review.txt
           gh pr diff "$PR_NUMBER" --repo "$REPO" > pr.diff
           python scripts/ai_review.py pr.diff > review.md
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file review.md

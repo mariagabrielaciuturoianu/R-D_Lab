@@ -21,7 +21,29 @@ A small self-hosted SOC platform for hypothesis-driven APT hunting:
 Scope and every control trace back to [RISK-REGISTER.md](RISK-REGISTER.md).
 
 **Stack:** OpenSearch and OpenSearch Dashboards (Docker Compose, arm64, pinned digests),
-SOPS/age secrets, a local root CA for mTLS, Sigma and pytest, MISP with PyMISP, Shodan.
+SOPS/age secrets, a local root CA for mTLS, Sigma and pytest, MISP with PyMISP, Shodan,
+Prometheus and Alertmanager.
+
+## Repository layout
+
+```
+.
+├── CLAUDE.md            AI onboarding: role, conventions, banned patterns, commands
+├── RISK-REGISTER.md     every control traces back to a row here
+├── Makefile             the only entry point: deploy, test, hunt, intel, monitor ...
+├── .claude/             memory, skills, settings and the PreToolUse guard hook
+├── .github/             CI and review workflows, Dependabot, CODEOWNERS, SECURITY, CONTRIBUTING
+├── config/              service configuration (OpenSearch, Prometheus, Alertmanager, ...)
+├── deploy/              Compose files: SOC stack with monitoring, MISP
+├── detections/          Sigma rules and their committed OpenSearch queries
+├── docs/                evidence per risk ID, AI governance notes, archive
+├── hunts/               hunt hypotheses H-001 ... (hunts as code)
+├── requirements/        pinned Python dependencies: dev (CI), intel (local), review (CI)
+├── scripts/             PKI, secrets, hunts, intel, exposure, alert demo, AI review
+├── secrets/             SOPS/age ciphertext only
+├── tests/               policy, hunt, intel and reviewer tests with samples
+└── toolkit/             hunt toolkit image (sigma-cli, PyMISP)
+```
 
 ## Governance (Labs 1 and 2)
 
@@ -29,11 +51,11 @@ SOPS/age secrets, a local root CA for mTLS, Sigma and pytest, MISP with PyMISP, 
 |---|---|---|
 | Local refusal of commits on `main` | `.pre-commit-config.yaml` (`no-commit-to-branch`) | R-01 |
 | Commits on `main` without a merged PR fail CI | `.github/workflows/governance.yml` | R-01 |
-| Mandatory human review, including AI config | `CODEOWNERS` | R-01, R-05 |
+| Mandatory human review, including AI config | `.github/CODEOWNERS` | R-01, R-05 |
 | Secret scanning before commit | `.pre-commit-config.yaml` (gitleaks, detect-private-key) | R-02 |
 | Agent cannot force push, push to `main`, or read secret paths | `.claude/settings.json`, `.claude/hooks/guard.sh` | R-01, R-03, R-06 |
-| Least-privilege tokens | `CONTRIBUTING.md`, workflow `permissions:` blocks | R-04 |
-| Memory and skills reviewed like code | `CODEOWNERS`, `docs/ai-governance.md` | R-05 |
+| Least-privilege tokens | `.github/CONTRIBUTING.md`, workflow `permissions:` blocks | R-04 |
+| Memory and skills reviewed like code | `.github/CODEOWNERS`, `docs/ai-governance.md` | R-05 |
 
 **GitHub plan route:** GitHub Free with evidence-based governance (local hook plus the
 governance workflow). Update this line if the repository moves to the ULBS organization
@@ -102,7 +124,7 @@ make hunt            # load samples into the running stack and run every committ
 
 ## Threat intelligence (Lab 6)
 
-MISP runs beside the SOC stack (`compose.misp.yaml`: database, cache, core, web front end;
+MISP runs beside the SOC stack (`deploy/compose.misp.yaml`: database, cache, core, web front end;
 pinned arm64 images, HTTPS on loopback, certificate from the project root CA). Its
 passwords and admin API key are generated at random straight into SOPS ciphertext.
 
@@ -160,7 +182,7 @@ make destroy         # containers, network, data volume and .runtime/ removed
 
 | Piece | File | Risk |
 |---|---|---|
-| Images pinned by linux/arm64 digest, ports on 127.0.0.1 from `config/stack.env` | `compose.yaml`, `tests/test_compose_policy.py` | R-07 |
+| Images pinned by linux/arm64 digest, ports on 127.0.0.1 from `config/stack.env` | `deploy/compose.yaml`, `tests/test_compose_policy.py` | R-07 |
 | Root CA and leaf certificates per component (OpenSSL) | `scripts/pki.sh` (output in git-ignored `certs/`) | R-07 |
 | mTLS: OpenSearch requires a client cert; Dashboards verifies the server and presents one | `config/opensearch.yml`, `config/opensearch_dashboards.yml` | R-07 |
 | Passwords committed only as age ciphertext | `.sops.yaml`, `secrets/opensearch.enc.yaml` | R-02 |
@@ -169,4 +191,4 @@ make destroy         # containers, network, data volume and .runtime/ removed
 Dashboards: `https://localhost:5601`. Trust `certs/root-ca.pem` in your browser or accept
 the warning once.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) and [SECURITY.md](.github/SECURITY.md).

@@ -32,10 +32,7 @@ updates:
       - dependency-name: sigma-cli
         update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
-    directory: /
-    # The root entry would otherwise also pick up toolkit/requirements.txt (duplicate PRs).
-    exclude-paths:
-      - "toolkit/**"
+    directory: /requirements
     schedule:
       interval: weekly
     cooldown:
