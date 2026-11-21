@@ -1,6 +1,7 @@
 #!/bin/bash
 # Local PKI for mTLS between stack components (R-07).
-# One root CA issues a leaf per component. Idempotent: existing files are kept.
+# One root CA issues a leaf per component. Idempotent: existing files are kept;
+# REISSUE=1 replaces the leaf certificates and keys (the root CA is kept).
 # Everything lands in certs/, which git ignores; private keys never leave this machine.
 set -euo pipefail
 
@@ -21,13 +22,15 @@ if [ ! -f root-ca.pem ]; then
   openssl req -x509 -new -key root-ca-key.pem -sha256 -days "$DAYS_CA" \
     -subj "$ORG/CN=RDLab Root CA" -out root-ca.pem \
     -addext "basicConstraints=critical,CA:TRUE,pathlen:0" \
-    -addext "keyUsage=critical,keyCertSign,cRLSign"
+    -addext "keyUsage=critical,keyCertSign,cRLSign" \
+    -addext "subjectKeyIdentifier=hash"
   echo "issued root CA"
 fi
 
 # leaf <name> <extendedKeyUsage> [subjectAltName]
 leaf() {
   local name=$1 eku=$2 san=${3:-}
+  if [ "${REISSUE:-}" = "1" ]; then rm -f "$name.pem" "$name-key.pem"; fi
   [ -f "$name.pem" ] && return 0
   newkey "$name-key.pem"
   openssl req -new -key "$name-key.pem" -subj "$ORG/CN=$name" -out "$name.csr"
@@ -35,6 +38,9 @@ leaf() {
     echo "basicConstraints=critical,CA:FALSE"
     echo "keyUsage=critical,digitalSignature,keyEncipherment"
     echo "extendedKeyUsage=$eku"
+    # RFC 5280 key identifiers; strict verifiers (Python 3.13+) reject leaves without an AKI.
+    echo "subjectKeyIdentifier=hash"
+    echo "authorityKeyIdentifier=keyid,issuer"
     [ -n "$san" ] && echo "subjectAltName=$san"
   } > "$name.ext"
   openssl x509 -req -in "$name.csr" -CA root-ca.pem -CAkey root-ca-key.pem \
@@ -49,6 +55,9 @@ leaf opensearch "serverAuth,clientAuth" "DNS:opensearch,DNS:localhost,IP:127.0.0
 leaf dashboards "serverAuth,clientAuth" "DNS:dashboards,DNS:localhost,IP:127.0.0.1"
 # Operator client cert for health checks and the security admin DN.
 leaf admin "clientAuth"
+
+# Fail now, not at deploy time, if any leaf would be rejected by a strict RFC 5280 verifier.
+openssl verify -x509_strict -CAfile root-ca.pem opensearch.pem dashboards.pem admin.pem >/dev/null
 
 # Containers run as uid 1000; certificates are public, keys readable by owner and group.
 chmod 644 ./*.pem
