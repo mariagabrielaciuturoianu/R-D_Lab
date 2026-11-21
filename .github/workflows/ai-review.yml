@@ -41,4 +41,7 @@ jobs:
           pip install -r requirements/review.txt
           gh pr diff "$PR_NUMBER" --repo "$REPO" > pr.diff
           python scripts/ai_review.py pr.diff > review.md
-          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file review.md
+          cat review.md >> "$GITHUB_STEP_SUMMARY"
+          # REST issue-comment endpoint: works with issues:write alone. (gh pr comment uses a
+          # GraphQL mutation that would need pull-requests:write, which can also approve.)
+          gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@review.md --silent
