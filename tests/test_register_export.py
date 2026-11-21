@@ -1,5 +1,7 @@
 """docs/RISK-REGISTER.xlsx must stay an exact export of RISK-REGISTER.md (all risks)."""
 import importlib.util
+import re
+import zipfile
 from pathlib import Path
 
 import openpyxl
@@ -23,6 +25,33 @@ def test_spreadsheet_matches_markdown_cell_by_cell():
         for key, col in exporter.XL_COLUMN.items():
             want = row[key] if key in exporter.SCORES else exporter.plain(row[key])
             assert SHEET[f"{col}{r}"].value == want, f"{row['ID']} {key} differs: run make register-xlsx"
+
+
+def test_code_spans_survive_verbatim():
+    # Checked against the raw Markdown, independently of exporter.plain(): identifiers such as
+    # tests/test_supply_chain.py and pull_request_target must not lose their underscores.
+    md_rows = [line for line in (ROOT / "RISK-REGISTER.md").read_text().splitlines()
+               if re.match(r"^\| R-\d+ \|", line)]
+    for r, line in enumerate(md_rows, start=exporter.FIRST_ROW):
+        cells = [c.strip() for c in line.strip().strip("|").split(" | ")]
+        row = dict(zip(exporter.MD_COLUMNS, cells))
+        for key, col in exporter.XL_COLUMN.items():
+            for span in re.findall(r"`([^`]+)`", row[key]):
+                assert span in (SHEET[f"{col}{r}"].value or ""), f"{row['ID']} {key}: {span!r} mangled"
+
+
+def test_workbook_holds_only_the_template_parts():
+    # A binary file in a public repository: no hidden sheets, external links or comments.
+    wb = SHEET.parent
+    assert wb.sheetnames == ["How to use", "Risk Register", "Scales"]
+    assert all(ws.sheet_state == "visible" for ws in wb.worksheets)
+    assert not list(wb.defined_names)
+    parts = zipfile.ZipFile(ROOT / "docs/RISK-REGISTER.xlsx").namelist()
+    assert not [p for p in parts if "externalLink" in p or "comments" in p or "vbaProject" in p], parts
+
+
+def test_check_mode_reports_no_drift():
+    assert exporter.drift(ROWS) == [], "run: make register-xlsx"
 
 
 def test_template_score_formulas_reproduce_the_markdown_scores():

@@ -35,7 +35,7 @@ lint:
 test:
 	$(PYTHON) -m pytest -v tests/
 
-# Export RISK-REGISTER.md into the course spreadsheet template (docs/RISK-REGISTER.xlsx).
+# Export RISK-REGISTER.md into the course spreadsheet template (docs/RISK-REGISTER.xlsx); all R-xx rows.
 register-xlsx:
 	$(PYTHON) scripts/export_register_xlsx.py
 

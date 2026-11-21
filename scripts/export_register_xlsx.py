@@ -8,7 +8,8 @@ Inherent (I) and Residual (M) score formulas, the colour bands, the red-evidence
 the dropdown validations. Excel recalculates the scores when the file is opened.
 tests/test_register_export.py fails if the spreadsheet and the Markdown drift apart.
 
-Usage: export_register_xlsx.py [--check]
+Usage: export_register_xlsx.py            write docs/RISK-REGISTER.xlsx
+       export_register_xlsx.py --check    exit 1 if the committed export has drifted
 """
 import re
 import sys
@@ -36,9 +37,13 @@ SCORES = {"L", "I", "RL", "RI"}
 
 
 def plain(text):
-    """Markdown cell -> spreadsheet text: drop code ticks and emphasis, keep the words."""
+    """Markdown cell -> spreadsheet text: drop code ticks and bold markers, nothing else.
+
+    Underscores are never touched: they belong to identifiers such as
+    tests/test_supply_chain.py and pull_request_target, not to emphasis.
+    """
     text = re.sub(r"`([^`]*)`", r"\1", text.strip())
-    return re.sub(r"(\*\*|__|\*|_)(\S.*?\S|\S)\1", r"\2", text)
+    return re.sub(r"\*\*(\S.*?\S|\S)\*\*", r"\1", text)
 
 
 def register_rows(markdown):
@@ -86,9 +91,25 @@ def export(rows):
     return OUT
 
 
+def drift(rows):
+    """Cells where docs/RISK-REGISTER.xlsx differs from what the Markdown would export."""
+    ws = openpyxl.load_workbook(OUT)[SHEET]
+    diffs = []
+    for r in range(FIRST_ROW, LAST_ROW + 1):
+        row = rows[r - FIRST_ROW] if r - FIRST_ROW < len(rows) else None
+        for key, col in XL_COLUMN.items():
+            want = None if row is None else (row[key] if key in SCORES else plain(row[key]))
+            if ws[f"{col}{r}"].value != want:
+                diffs.append(f"{col}{r}")
+    return diffs
+
+
 if __name__ == "__main__":
     rows = register_rows(SOURCE.read_text())
     if "--check" in sys.argv:
-        print(f"{len(rows)} register rows parsed from {SOURCE.name}")
+        diffs = drift(rows)
+        if diffs:
+            sys.exit(f"{OUT.name} is out of date ({len(diffs)} cells, e.g. {diffs[:5]}): run make register-xlsx")
+        print(f"{OUT.name} matches {SOURCE.name} ({len(rows)} risks)")
     else:
         print(f"wrote {export(rows).relative_to(ROOT)} with {len(rows)} risks")
