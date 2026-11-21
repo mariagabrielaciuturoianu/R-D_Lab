@@ -1,0 +1,23 @@
+# R-13: a weakened rule cannot pass CI. Each edit below is applied to H-003, the hunt
+# tests run, and the rule is restored. Generated 2026-11-20T16:08Z.
+
+### Edit 1: narrow the match back to 'create full' (drops the sysvol variant)
+    >       assert not missed, f"blind to: {missed}"
+    E       AssertionError: blind to: ['upper case and the sysvol variant (the original rule missed this)']
+    >       assert json.loads(out) == json.loads((ROOT / h["query"]).read_text()), "reconvert: make queries"
+    E       AssertionError: reconvert: make queries
+    FAILED tests/test_hunts.py::test_rule_fires_on_every_positive_sample[H-003]
+    FAILED tests/test_hunts.py::test_committed_query_matches_its_rule[H-003] - As...
+    2 failed, 3 passed, 12 deselected in 0.45s
+
+### Edit 2: point the rule at a binary that never runs (a silently blind rule)
+    >       assert not missed, f"blind to: {missed}"
+    E       AssertionError: blind to: ['Volt Typhoon form from CISA AA23-144A', 'upper case and the sysvol variant (the original rule missed this)']
+    >       assert json.loads(out) == json.loads((ROOT / h["query"]).read_text()), "reconvert: make queries"
+    E       AssertionError: reconvert: make queries
+    FAILED tests/test_hunts.py::test_rule_fires_on_every_positive_sample[H-003]
+    FAILED tests/test_hunts.py::test_committed_query_matches_its_rule[H-003] - As...
+    2 failed, 3 passed, 12 deselected in 0.45s
+
+### Control: the committed rule, unmodified
+    5 passed, 12 deselected in 0.42s

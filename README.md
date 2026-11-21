@@ -80,6 +80,26 @@ make toolkit                                   # build locally
 docker run --rm hunt-toolkit:local list targets
 ```
 
+## Hunts as code (Lab 5)
+
+| Hunt | Hypothesis | ATT&CK | Rule |
+|---|---|---|---|
+| [H-001](hunts/H-001.yaml) | Lateral movement with remote WMI: shells under `WmiPrvSE.exe` | T1047 | `detections/sigma/H-001-wmi-spawns-shell.yml` |
+| [H-002](hunts/H-002.yaml) | Staging hidden behind PowerShell `-EncodedCommand` | T1059.001, T1027.010 | `detections/sigma/H-002-encoded-powershell.yml` |
+| [H-003](hunts/H-003.yaml) | Domain credential theft with `ntdsutil ... ifm create full` | T1003.003 | `detections/sigma/H-003-ntdsutil-ifm.yml` |
+
+Each hunt names its threat actors, data sources and the result that confirms or refutes
+it. Every rule ships positive samples and near-miss negatives in `tests/samples/hunts/`;
+`tests/test_hunts.py` evaluates the rule file itself against them (via
+`tests/sigma_match.py`) and fails if the committed OpenSearch query in
+`detections/opensearch/` no longer equals the rule's conversion.
+
+```bash
+make queries         # reconvert every Sigma rule to OpenSearch query DSL
+make test            # rule logic against samples, reconversion, sigma check
+make hunt            # load samples into the running stack and run every committed query
+```
+
 ## Run the stack (Lab 3)
 
 Requirements: Docker Desktop (arm64), `sops`, `age`, `openssl`, and an age key in
