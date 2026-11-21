@@ -1,0 +1,20 @@
+# Hunt hypothesis (R-08). See H-001.yaml for the format.
+id: H-002
+title: Encoded PowerShell used to hide staging commands
+hypothesis: >
+  The actor stages tooling and runs discovery with PowerShell -EncodedCommand, so the
+  real script never appears in command-line logs and only a base64 blob is visible.
+threat_actors:
+  - {name: APT29, mitre_group: G0016}
+  - {name: Sandworm Team, mitre_group: G0034}
+techniques: [T1059.001, T1027.010]
+data_sources:
+  - Sysmon event 1 (process creation), normalised to ECS process.*
+rule: detections/sigma/H-002-encoded-powershell.yml
+query: detections/opensearch/H-002-encoded-powershell.json
+samples:
+  positive: tests/samples/hunts/H-002-positive.ndjson
+  negative: tests/samples/hunts/H-002-negative.ndjson
+confirms: Decoded command performs download, discovery or credential access.
+refutes: Decoded commands match known installer or management-agent scripts.
+base_priority: 4

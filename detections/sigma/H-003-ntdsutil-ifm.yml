@@ -1,0 +1,31 @@
+title: Active Directory database copied with ntdsutil IFM
+id: 33853da4-5960-4dd0-ae37-9c91080a7034
+status: experimental
+description: >
+  ntdsutil creating an Install From Media (IFM) copy of NTDS.dit. Attackers use it to take
+  every domain credential hash offline, as Volt Typhoon did with
+  ntdsutil "ac i ntds" ifm "create full C:\Windows\Temp\...".
+references:
+  - https://attack.mitre.org/techniques/T1003/003/
+  - https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-144a
+author: R&D Lab
+date: 2026-11-20
+tags:
+  - attack.credential-access
+  - attack.t1003.003
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  ntdsutil:
+    process.name: ntdsutil.exe
+  ifm_copy:
+    # "create full" and "create sysvol full" both write a copy of NTDS.dit.
+    process.command_line|contains|all:
+      - 'ifm'
+      - 'create '
+      - 'full'
+  condition: ntdsutil and ifm_copy
+falsepositives:
+  - Planned domain controller promotion from media by administrators
+level: critical

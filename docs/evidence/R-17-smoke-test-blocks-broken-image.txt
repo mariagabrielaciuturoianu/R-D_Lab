@@ -1,0 +1,24 @@
+# R-17 evidence: the smoke test blocks an image that scans clean but cannot run.
+# Demo PR #12 reproduced Dependabot #8 (python 3.13 -> 3.15 base). Before PR #11, #8 passed
+# every check. CI run: https://github.com/mariagabrielaciuturoianu/R-D_Lab/actions/runs/44768570520
+
+scan: fail
+release: skipping
+lint: pass
+test: pass
+
+## scan job, failing step:
+    from sigma.collection import SigmaCollection
+  File "/usr/local/lib/python3.15/site-packages/sigma/collection.py", line 13, in <module>
+    from sigma.correlations import SigmaCorrelationRule
+  File "/usr/local/lib/python3.15/site-packages/sigma/correlations.py", line 26, in <module>
+    from sigma.rule import EnumLowercaseStringMixin, SigmaRule, SigmaRuleBase
+  File "/usr/local/lib/python3.15/site-packages/sigma/rule/__init__.py", line 1, in <module>
+    from .rule import SigmaRule
+  File "/usr/local/lib/python3.15/site-packages/sigma/rule/rule.py", line 11, in <module>
+    from sigma.rule.base import SigmaRuleBase
+  File "/usr/local/lib/python3.15/site-packages/sigma/rule/base.py", line 22, in <module>
+    class SigmaYAMLLoader(yaml.CSafeLoader):
+                          ^^^^^^^^^^^^^^^^
+AttributeError: module 'yaml' has no attribute 'CSafeLoader'. Did you mean '.SafeLoader' instead of '.CSafeLoader'?
+##[error]Process completed with exit code 1.

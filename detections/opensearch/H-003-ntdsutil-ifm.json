@@ -1,0 +1,14 @@
+{
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "query_string": {
+                        "query": "process.name:ntdsutil.exe AND (process.command_line:*ifm* AND process.command_line:*create\\ * AND process.command_line:*full*)",
+                        "analyze_wildcard": true
+                    }
+                }
+            ]
+        }
+    }
+}

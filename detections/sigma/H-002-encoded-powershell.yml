@@ -1,0 +1,34 @@
+title: PowerShell with an encoded command
+id: 57ecf717-c7b5-4f10-b7be-b42d63009ed0
+status: experimental
+description: >
+  PowerShell started with -EncodedCommand or one of its abbreviations. Base64-encoded
+  commands hide the script from command-line logging and are a staple of APT tradecraft
+  for staging and execution.
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1027/010/
+author: R&D Lab
+date: 2026-11-20
+tags:
+  - attack.execution
+  - attack.t1059.001
+  - attack.t1027.010
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  powershell:
+    process.name:
+      - powershell.exe
+      - pwsh.exe
+  encoded_flag:
+    # -enc covers -enc, -encod, -EncodedCommand; -e and -ec are the shortest forms.
+    process.command_line|contains:
+      - ' -enc'
+      - ' -e '
+      - ' -ec '
+  condition: powershell and encoded_flag
+falsepositives:
+  - Some installers and management agents pass encoded commands
+level: medium

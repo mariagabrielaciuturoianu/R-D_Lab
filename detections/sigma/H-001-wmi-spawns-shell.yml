@@ -1,0 +1,30 @@
+title: Shell spawned by the WMI provider host
+id: 3c2cfb75-5036-4362-9cae-e49eafccbe66
+status: experimental
+description: >
+  cmd.exe or PowerShell started by WmiPrvSE.exe. This is the process footprint of remote
+  WMI execution (wmic /node:<host> process call create), which living-off-the-land APTs
+  use to move between hosts without dropping tools.
+references:
+  - https://attack.mitre.org/techniques/T1047/
+  - https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-144a
+author: R&D Lab
+date: 2026-11-20
+tags:
+  - attack.execution
+  - attack.t1047
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  wmi_parent:
+    process.parent.name: WmiPrvSE.exe
+  shell_child:
+    process.name:
+      - cmd.exe
+      - powershell.exe
+      - pwsh.exe
+  condition: wmi_parent and shell_child
+falsepositives:
+  - Endpoint management agents (SCCM, some backup tools) that run scripts through WMI
+level: high
