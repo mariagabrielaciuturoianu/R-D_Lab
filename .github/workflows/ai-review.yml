@@ -29,7 +29,9 @@ jobs:
       # requests" is off, so GitHub rejects any approval from this token. No merge either.
       pull-requests: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Semgrep flags every checkout under pull_request_target; this one checks out the base
+      # commit only, never pull request code (enforced by tests/test_supply_chain.py).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 nosemgrep: yaml.github-actions.security.pull-request-target-code-checkout.pull-request-target-code-checkout
         with:
           ref: ${{ github.event.pull_request.base.sha }}  # base branch only, never the PR head
           persist-credentials: false
