@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = sorted((ROOT / ".github" / "workflows").glob("*.y*ml"))
@@ -41,15 +42,32 @@ def test_checkout_never_persists_credentials(path):
             assert re.search(r"persist-credentials:\s*false", step), "checkout keeps the token in .git/config"
 
 
+PULL_REQUEST_TARGET_ALLOWLIST = {"ai-review.yml"}
+
+
+def uses_pull_request_target(path):
+    """Parsed triggers (YAML escapes cannot hide the key), plus a raw-text backstop."""
+    doc = yaml.safe_load(path.read_text()) or {}
+    on = doc.get("on", doc.get(True, {}))  # PyYAML reads the bare key `on` as True
+    triggers = set(on) if isinstance(on, (dict, list)) else {on}
+    return "pull_request_target" in triggers or "pull_request_target" in path.read_text()
+
+
+def test_pull_request_target_only_in_the_reviewer():
+    users = {p.name for p in WORKFLOWS if uses_pull_request_target(p)}
+    assert users <= PULL_REQUEST_TARGET_ALLOWLIST, f"pull_request_target outside the allowlist: {users - PULL_REQUEST_TARGET_ALLOWLIST}"
+
+
 @pytest.mark.parametrize("path", WORKFLOWS, ids=ids(WORKFLOWS))
 def test_pull_request_target_never_checks_out_pull_request_code(path):
     # pull_request_target runs with secrets; it is safe only when no PR code is checked out
     # or executed, and only for same-repository pull requests (Lab 4 rule, R-16).
-    text = path.read_text()
-    if "pull_request_target" not in text:
+    if not uses_pull_request_target(path):
         return
+    text = path.read_text()
     assert "pull_request.head.sha" not in text and "pull_request.head.ref" not in text
     assert "github.head_ref" not in text and "refs/pull/" not in text
+    assert "gh pr checkout" not in text
     assert "ref: ${{ github.event.pull_request.base.sha }}" in text
     assert "head.repo.full_name == github.repository" in text
 
