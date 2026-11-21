@@ -1,0 +1,29 @@
+# R-08 and R-11 evidence: make intel against the live MISP and OpenSearch containers.
+# Second run: the seed step is idempotent, so no new events are created. MISP is verified
+# against the project root CA; IPs are RFC 5737 documentation addresses plus a public resolver.
+# 2026-11-21T12:32Z, branch feat/lab6-intel @ 5e09a60 + working tree
+
+
+Feed lifecycle: 5 IP attributes in MISP -> 2 indicators kept
+  192.0.2.10      event 1    dropped: to_ids false (context only)
+  198.51.100.23   event 1    kept
+  203.0.113.66    event 1    kept
+  203.0.113.66    event 2    kept
+  8.8.8.8         event 1    dropped: MISP warninglist
+  203.0.113.66 deduplicated across events 1, 2
+
+Enrichment: 5 network events loaded into intel-telemetry-lab
+  OK  ENG-WS-07 -> 203.0.113.66    risk  90  matched=True  actors=Sandworm Team  (flagged)
+  OK  ENG-WS-07 -> 198.51.100.23   risk  90  matched=True  actors=Sandworm Team  (flagged)
+  OK  DC-01     -> 8.8.8.8         risk  20  matched=False actors=-              (warninglisted)
+  OK  HMI-02    -> 192.0.2.10      risk  20  matched=False actors=-              (not-for-detection)
+  OK  HIST-01   -> 198.18.0.20     risk  20  matched=False actors=-              (unknown)
+
+Hunt queue (active in MISP: Sandworm Team)
+  without intelligence: H-003 > H-001 > H-002
+  with MISP:            H-001 > H-003 > H-002
+    H-001 priority 3 -> 1  (raised by Sandworm Team)  Remote execution through WMI on engineering hosts
+    H-003 priority 2 -> 2  (no active actor)  Domain credential theft with ntdsutil IFM
+    H-002 priority 4 -> 2  (raised by Sandworm Team)  Encoded PowerShell used to hide staging commands
+
+exit=0 (0 = every sample got its expected outcome)

@@ -1,0 +1,2 @@
+# Local-only intelligence clients (not installed in CI): make intel, make exposure.
+pymisp==3.0.0

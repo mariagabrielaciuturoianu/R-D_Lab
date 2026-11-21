@@ -55,9 +55,11 @@ leaf opensearch "serverAuth,clientAuth" "DNS:opensearch,DNS:localhost,IP:127.0.0
 leaf dashboards "serverAuth,clientAuth" "DNS:dashboards,DNS:localhost,IP:127.0.0.1"
 # Operator client cert for health checks and the security admin DN.
 leaf admin "clientAuth"
+# MISP web front end (Lab 6): clients verify it against the same root CA.
+leaf misp "serverAuth" "DNS:misp,DNS:localhost,IP:127.0.0.1"
 
 # Fail now, not at deploy time, if any leaf would be rejected by a strict RFC 5280 verifier.
-openssl verify -x509_strict -CAfile root-ca.pem opensearch.pem dashboards.pem admin.pem >/dev/null
+openssl verify -x509_strict -CAfile root-ca.pem opensearch.pem dashboards.pem admin.pem misp.pem >/dev/null
 
 # Containers run as uid 1000; certificates are public, keys readable by owner and group.
 chmod 644 ./*.pem

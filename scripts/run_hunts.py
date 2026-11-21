@@ -6,87 +6,37 @@ index from tests/samples/hunts/, then runs each hunt's committed OpenSearch quer
 checks it. A hunt fails if it misses one of its own positives or hits any negative sample
 (near misses included). A hit on another hunt's positive is reported as overlap, not a
 failure: attack chains share events (PowerShell launched through WMI is both H-001 and
-H-002). Talks to OpenSearch over mTLS with the admin client certificate; the password
-comes from .runtime/ (make deploy). Exit code 1 if any hunt fails.
+H-002). Exit code 1 if any hunt fails.
 """
-import base64
 import json
-import ssl
 import sys
-import urllib.request
-from pathlib import Path
 
 import yaml
 
-ROOT = Path(__file__).resolve().parent.parent
+from stack_client import ROOT, OpenSearch
+
 INDEX = "hunt-telemetry-lab"
 
-
-def env_file(path):
-    out = {}
-    for line in Path(path).read_text().splitlines():
-        if "=" in line and not line.lstrip().startswith("#"):
-            k, v = line.split("=", 1)
-            out[k.strip()] = v.strip().strip('"')
-    return out
-
-
-settings = env_file(ROOT / "config/stack.env")
-if (ROOT / ".env").exists():
-    settings.update(env_file(ROOT / ".env"))
-runtime = ROOT / ".runtime/.env.secrets"
-if not runtime.exists():
-    sys.exit("No decrypted secret in .runtime/: run make deploy first.")
-password = env_file(runtime)["OPENSEARCH_ADMIN_PASSWORD"]
-
-ctx = ssl.create_default_context(cafile=str(ROOT / "certs/root-ca.pem"))
-ctx.load_cert_chain(ROOT / "certs/admin.pem", ROOT / "certs/admin-key.pem")
-BASE = f"https://localhost:{settings['OPENSEARCH_PORT']}"
-AUTH = "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()
-
-
-def call(method, path, body=None, ndjson=False):
-    data = None
-    if body is not None:
-        data = body.encode() if ndjson else json.dumps(body).encode()
-    req = urllib.request.Request(BASE + path, data=data, method=method, headers={
-        "Authorization": AUTH,
-        "Content-Type": "application/x-ndjson" if ndjson else "application/json",
-    })
-    try:
-        with urllib.request.urlopen(req, context=ctx, timeout=30) as resp:
-            return json.loads(resp.read() or b"{}")
-    except urllib.error.HTTPError as err:
-        if method == "DELETE" and err.code == 404:
-            return {}
-        sys.exit(f"{method} {path}: HTTP {err.code} {err.read().decode()[:300]}")
-
-
+os_ = OpenSearch()
 hunts = [yaml.safe_load(p.read_text()) for p in sorted((ROOT / "hunts").glob("H-*.yaml"))]
 
-call("PUT", "/_index_template/hunt-telemetry",
-     json.loads((ROOT / "config/opensearch/hunt-telemetry-template.json").read_text()))
-call("DELETE", f"/{INDEX}")
-bulk, expected = [], {}
+docs, expected = [], {}
 for h in hunts:
     for kind in ("positive", "negative"):
         for line in (ROOT / h["samples"][kind]).read_text().splitlines():
             if line.strip():
                 doc = json.loads(line)
                 doc["hunt"].update({"id": h["id"], "expected": kind})
-                bulk += [json.dumps({"index": {"_index": INDEX}}), json.dumps(doc)]
-    expected[h["id"]] = sum(1 for line in (ROOT / h["samples"]["positive"]).read_text().splitlines() if line.strip())
-result = call("POST", "/_bulk?refresh=true", "\n".join(bulk) + "\n", ndjson=True)
-if result.get("errors"):
-    sys.exit("bulk load failed: " + json.dumps(result)[:500])
-total = call("GET", f"/{INDEX}/_count")["count"]
+                docs.append(doc)
+    expected[h["id"]] = sum(1 for d in docs if d["hunt"]["id"] == h["id"] and d["hunt"]["expected"] == "positive")
+total = os_.reload_index(INDEX, "hunt-telemetry", ROOT / "config/opensearch/hunt-telemetry-template.json", docs)
 print(f"Loaded {total} sample events into {INDEX} (positives and near-miss negatives for {len(hunts)} hunts)\n")
 
 failed = False
 for h in hunts:
     query = json.loads((ROOT / h["query"]).read_text())
     query["size"] = 50
-    hits = call("POST", f"/{INDEX}/_search", query)["hits"]["hits"]
+    hits = os_.call("POST", f"/{INDEX}/_search", query)["hits"]["hits"]
     tag = lambda x: (x["_source"]["hunt"]["id"], x["_source"]["hunt"]["expected"])
     own_pos = [x for x in hits if tag(x) == (h["id"], "positive")]
     negatives = [x for x in hits if tag(x)[1] == "negative"]
