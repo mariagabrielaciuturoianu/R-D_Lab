@@ -1,0 +1,12 @@
+# R-15: every third-party action must be pinned to a full commit SHA. A throwaway
+# workflow using actions/checkout@v4 is added, the policy test runs, and it is deleted.
+# GitHub enforces the same rule server-side (R-15-actions-sha-policy.png).
+# Generated 2026-11-21T15:55Z.
+
+### Case: uses: actions/checkout@v4 (a tag anyone with push rights to the action can move)
+    E           AssertionError: unpinned: - uses: actions/checkout@v4
+    FAILED tests/test_supply_chain.py::test_actions_pinned_to_full_sha_with_tag_comment[.github/workflows/zz-demo-unpinned.yml]
+    1 failed, 3 passed, 21 deselected in 0.24s
+
+### Control: the committed workflows
+    3 passed, 17 deselected in 0.13s
