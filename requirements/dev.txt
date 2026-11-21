@@ -4,3 +4,5 @@ PyYAML==6.0.3
 # Same sigma versions as toolkit/requirements.txt; tests reconvert every hunt rule (R-09).
 sigma-cli==3.1.0
 pysigma-backend-opensearch==2.0.3
+# Exports RISK-REGISTER.md into the course spreadsheet template (make register-xlsx).
+openpyxl==3.1.5
