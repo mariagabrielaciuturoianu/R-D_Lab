@@ -115,7 +115,8 @@ exposure:
 # Prometheus, Alertmanager and the blackbox prober, every link mTLS from the root CA (R-18).
 monitor-up: pki
 	$(COMPOSE) --profile monitoring up -d --wait prometheus alertmanager blackbox
-	@echo "Prometheus https://localhost:9090  Alertmanager https://localhost:9093"
+	@set -a; . config/stack.env; if [ -f .env ]; then . ./.env; fi; \
+	  echo "Prometheus https://localhost:$$PROMETHEUS_PORT  Alertmanager https://localhost:$$ALERTMANAGER_PORT"
 
 monitor-down:
 	-$(COMPOSE) --profile monitoring rm -sf prometheus alertmanager blackbox

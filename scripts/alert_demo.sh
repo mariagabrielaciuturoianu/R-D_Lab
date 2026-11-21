@@ -4,8 +4,11 @@
 # Alertmanager is queried over TLS, verified against the project root CA.
 set -euo pipefail
 
+# Ports as the Makefile sees them: defaults, then the optional local override.
 # shellcheck source=/dev/null
 . config/stack.env
+# shellcheck source=/dev/null
+if [ -f .env ]; then . ./.env; fi
 AM="https://localhost:${ALERTMANAGER_PORT}/api/v2/alerts?filter=alertname%3D%22SocServiceDown%22"
 COMPOSE=(docker compose --project-directory . -f deploy/compose.yaml --env-file config/stack.env)
 [ -f .runtime/.env.secrets ] && COMPOSE+=(--env-file .runtime/.env.secrets)
