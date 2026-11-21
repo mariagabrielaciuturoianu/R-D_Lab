@@ -100,6 +100,30 @@ make test            # rule logic against samples, reconversion, sigma check
 make hunt            # load samples into the running stack and run every committed query
 ```
 
+## Threat intelligence (Lab 6)
+
+MISP runs beside the SOC stack (`compose.misp.yaml`: database, cache, core, web front end;
+pinned arm64 images, HTTPS on loopback, certificate from the project root CA). Its
+passwords and admin API key are generated at random straight into SOPS ciphertext.
+
+```bash
+make misp-secrets    # once: random MISP passwords and API key -> secrets/misp.enc.yaml
+make misp-up         # first boot takes several minutes; https://localhost:8444
+make intel           # seed the exercise campaign, pull, enrich telemetry, reorder hunts
+make intel-secret    # once: Shodan API key -> secrets/intel.enc.yaml
+make exposure        # Shodan view of this machine's own public IP (masked in output)
+make misp-down
+```
+
+| Step | What changes | Risk |
+|---|---|---|
+| Feed lifecycle | Only `to_ids` attributes, warninglists enforced, max 30 days old, deduplicated | R-11 |
+| Enrichment | Telemetry touching a MISP indicator gets `threat.indicator.matched`, the actor, risk 20 -> 90 | R-11 |
+| Hunt queue | Hunts whose threat actors are active in MISP move up | R-08 |
+| Exposure | New open port on the project's own public IP raises an alert | R-12 |
+
+Live indicators (`enrich/`) and exposure snapshots (`exposure/`) are git-ignored.
+
 ## Run the stack (Lab 3)
 
 Requirements: Docker Desktop (arm64), `sops`, `age`, `openssl`, and an age key in
