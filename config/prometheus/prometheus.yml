@@ -1,0 +1,44 @@
+# Prometheus (R-18): probes the SOC stack over mTLS and alerts through Alertmanager.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - scheme: https
+      tls_config: &mtls
+        ca_file: /certs/root-ca.pem
+        cert_file: /certs/prometheus.pem
+        key_file: /certs/prometheus-key.pem
+      static_configs:
+        - targets: [alertmanager:9093]
+
+scrape_configs:
+  # Availability of the SOC components, probed by blackbox with the "monitor" client cert.
+  - job_name: soc-https
+    metrics_path: /probe
+    params:
+      module: [https_mtls]
+    scheme: https
+    tls_config: *mtls
+    static_configs:
+      - targets:
+          - https://opensearch:9200
+          - https://dashboards:5601/api/status
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  # The monitoring plane watches itself, over the same mTLS.
+  - job_name: monitoring
+    scheme: https
+    tls_config: *mtls
+    static_configs:
+      - targets: [localhost:9090, alertmanager:9093, blackbox:9115]

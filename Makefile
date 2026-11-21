@@ -1,6 +1,6 @@
 # Default commands (see CLAUDE.md).
 .PHONY: lint test hooks venv pki secrets-init secrets deploy health destroy toolkit queries hunt \
-        misp-secrets intel-secret misp-up misp-down intel exposure
+        misp-secrets intel-secret misp-up misp-down intel exposure monitor-up monitor-down alert-demo
 
 PYTHON := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 SIGMA := $(if $(wildcard .venv/bin/sigma),.venv/bin/sigma,sigma)
@@ -77,7 +77,7 @@ health:
 
 # Removes containers, network, data volume and every decrypted file (R-02).
 destroy:
-	-$(COMPOSE) down -v --remove-orphans
+	-$(COMPOSE) --profile monitoring down -v --remove-orphans
 	rm -f .runtime/.env.secrets .runtime/internal_users.yml
 
 # --- Threat intelligence (Lab 6) -------------------------------------------------------
@@ -109,3 +109,16 @@ intel:
 exposure:
 	./scripts/render-misp-runtime.sh
 	$(PYTHON) scripts/exposure_check.py
+
+# --- Monitoring (Lab 7) ------------------------------------------------------------------
+# Prometheus, Alertmanager and the blackbox prober, every link mTLS from the root CA (R-18).
+monitor-up: pki
+	$(COMPOSE) --profile monitoring up -d --wait prometheus alertmanager blackbox
+	@echo "Prometheus https://localhost:9090  Alertmanager https://localhost:9093"
+
+monitor-down:
+	-$(COMPOSE) --profile monitoring rm -sf prometheus alertmanager blackbox
+
+# Stop OpenSearch, watch SocServiceDown fire in Alertmanager, start it, watch it resolve.
+alert-demo:
+	./scripts/alert_demo.sh

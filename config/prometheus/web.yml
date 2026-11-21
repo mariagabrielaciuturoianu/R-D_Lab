@@ -1,0 +1,7 @@
+# Prometheus UI and API: TLS from the root CA. A client certificate is verified when given
+# (Prometheus scraping itself) and optional for the analyst's browser on loopback.
+tls_server_config:
+  cert_file: /certs/prometheus.pem
+  key_file: /certs/prometheus-key.pem
+  client_ca_file: /certs/root-ca.pem
+  client_auth_type: VerifyClientCertIfGiven

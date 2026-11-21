@@ -57,9 +57,16 @@ leaf dashboards "serverAuth,clientAuth" "DNS:dashboards,DNS:localhost,IP:127.0.0
 leaf admin "clientAuth"
 # MISP web front end (Lab 6): clients verify it against the same root CA.
 leaf misp "serverAuth" "DNS:misp,DNS:localhost,IP:127.0.0.1"
+# Monitoring (Lab 7): every link is mTLS. "monitor" is the probe's client identity towards
+# OpenSearch and Dashboards; it proves reachability and is granted no data (HTTP 401).
+leaf monitor "clientAuth"
+leaf prometheus "serverAuth,clientAuth" "DNS:prometheus,DNS:localhost,IP:127.0.0.1"
+leaf alertmanager "serverAuth" "DNS:alertmanager,DNS:localhost,IP:127.0.0.1"
+leaf blackbox "serverAuth" "DNS:blackbox,DNS:localhost,IP:127.0.0.1"
 
 # Fail now, not at deploy time, if any leaf would be rejected by a strict RFC 5280 verifier.
-openssl verify -x509_strict -CAfile root-ca.pem opensearch.pem dashboards.pem admin.pem misp.pem >/dev/null
+openssl verify -x509_strict -CAfile root-ca.pem opensearch.pem dashboards.pem admin.pem misp.pem \
+  monitor.pem prometheus.pem alertmanager.pem blackbox.pem >/dev/null
 
 # Containers run as uid 1000; certificates are public, keys readable by owner and group.
 chmod 644 ./*.pem

@@ -1,0 +1,6 @@
+# The prober's own endpoint: TLS from the root CA; Prometheus must present a client cert.
+tls_server_config:
+  cert_file: /certs/blackbox.pem
+  key_file: /certs/blackbox-key.pem
+  client_ca_file: /certs/root-ca.pem
+  client_auth_type: RequireAndVerifyClientCert
