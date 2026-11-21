@@ -1,7 +1,10 @@
 # Default commands (see CLAUDE.md).
-.PHONY: lint test hooks venv pki secrets-init secrets deploy health destroy toolkit
+.PHONY: lint test hooks venv pki secrets-init secrets deploy health destroy toolkit queries hunt
 
 PYTHON := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
+SIGMA := $(if $(wildcard .venv/bin/sigma),.venv/bin/sigma,sigma)
+# Same minor version as CI; sigma needs compiled PyYAML, which newer Pythons may lack.
+BOOTSTRAP_PYTHON := $(or $(shell command -v python3.13),python3)
 
 # sops on macOS looks in ~/Library/Application Support by default; use the documented
 # location unless the caller already set one. The key itself never enters the repo (R-02).
@@ -18,15 +21,28 @@ hooks:
 
 # Local virtualenv with pinned test dependencies.
 venv:
-	python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+	$(BOOTSTRAP_PYTHON) -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 
 # gitleaks, no-commit-to-branch and file hygiene on every file (R-01, R-02).
 lint:
 	pre-commit run --all-files
 
-# Unit tests, including the guard hook regression suite (R-01..R-06).
+# Unit tests: guard hook, policies, and every hunt against its samples (R-01..R-17).
 test:
 	$(PYTHON) -m pytest -v tests/
+
+# Reconvert every Sigma rule to the committed OpenSearch query DSL (R-09).
+queries:
+	@mkdir -p detections/opensearch
+	@for rule in detections/sigma/*.yml; do \
+	  out=detections/opensearch/$$(basename $$rule .yml).json; \
+	  $(SIGMA) convert -t opensearch_lucene --without-pipeline -f dsl_lucene $$rule 2>/dev/null \
+	    | python3 -m json.tool > $$out && echo "wrote $$out"; \
+	done
+
+# Load the hunt samples into the running stack and run every committed query (R-10).
+hunt:
+	$(PYTHON) scripts/run_hunts.py
 
 # Hunt toolkit image (sigma-cli + PyMISP), the same build CI scans and signs (R-17).
 toolkit:

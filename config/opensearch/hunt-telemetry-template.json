@@ -1,0 +1,41 @@
+{
+  "index_patterns": ["hunt-telemetry-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "analysis": {
+        "normalizer": {
+          "lowercase_keyword": {"type": "custom", "filter": ["lowercase"]}
+        }
+      }
+    },
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "@timestamp": {"type": "date"},
+        "event": {"properties": {
+          "code": {"type": "keyword"},
+          "category": {"type": "keyword"},
+          "type": {"type": "keyword"}
+        }},
+        "host": {"properties": {"name": {"type": "keyword", "normalizer": "lowercase_keyword"}}},
+        "user": {"properties": {"name": {"type": "keyword", "normalizer": "lowercase_keyword"}}},
+        "process": {"properties": {
+          "name": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "executable": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "command_line": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 32766},
+          "parent": {"properties": {
+            "name": {"type": "keyword", "normalizer": "lowercase_keyword"},
+            "executable": {"type": "keyword", "normalizer": "lowercase_keyword"}
+          }}
+        }},
+        "hunt": {"properties": {
+          "sample": {"type": "keyword"},
+          "id": {"type": "keyword"},
+          "expected": {"type": "keyword"}
+        }}
+      }
+    }
+  }
+}
