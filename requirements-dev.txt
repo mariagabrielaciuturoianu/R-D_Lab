@@ -1,2 +1,6 @@
-# Test dependencies, pinned (install with: make venv)
+# Test dependencies, pinned (install with: make venv). CI installs the same file.
 pytest==9.2.0
+PyYAML==6.0.3
+# Same sigma versions as toolkit/requirements.txt; tests reconvert every hunt rule (R-09).
+sigma-cli==3.1.0
+pysigma-backend-opensearch==2.0.3
