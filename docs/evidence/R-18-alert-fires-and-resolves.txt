@@ -1,0 +1,16 @@
+# R-18 evidence: make alert-demo. OpenSearch is stopped; the blackbox probe (mTLS, 'monitor'
+# client certificate) fails; after 30s Prometheus fires SocServiceDown to Alertmanager;
+# OpenSearch is started again and the alert resolves. Alertmanager queried over TLS.
+
+13:43:16Z firing before the test: 0
+13:43:16Z stopping opensearch
+ Container soc-hunting-opensearch-1 Stopping
+ Container soc-hunting-opensearch-1 Stopped
+13:44:07Z ALERT SocServiceDown firing for: https://opensearch:9200
+  severity=critical risk=R-18 startsAt=2026-11-21T13:44:04.875Z
+  summary: https://opensearch:9200 is unreachable over mTLS
+13:44:07Z starting opensearch again
+ Container soc-hunting-opensearch-1 Starting
+ Container soc-hunting-opensearch-1 Started
+13:44:38Z alert resolved: OpenSearch reachable over mTLS again
+exit=0 (the script prints "alert resolved" only on its success path, then exits 0)

@@ -18,8 +18,9 @@ first and raises the risk score of telemetry that touches known APT infrastructu
 
 > Rows R-01 to R-06 cover the governed AI workflow. Rows R-07 to R-13 cover the SOC
 > platform, the hunting function it serves, and the threat landscape it hunts. R-15 to
-> R-17 cover the CI/CD pipeline and the artefact it ships. R-14
-> records residual exposure of the public repository, accepted after review.
+> R-17 cover the CI/CD pipeline and the artefact it ships. R-18 and R-19 cover operating
+> the platform and automated review. R-14 records residual exposure of the public
+> repository, accepted after review.
 
 ## Register
 
@@ -42,6 +43,8 @@ first and raises the risk score of telemetry that touches known APT infrastructu
 | R-15 | Operational | CI pipeline, its token and the artefacts it builds | A third-party action or CI tool release is replaced with code that steals secrets or tampers with builds (moved tags, as in the 2025 tj-actions and 2026 trivy-action compromises) | T1195.001 | Actions referenced by mutable tags; tools installed without versions; no audit of the workflow itself | 4 | 5 | 20 (High) | Every action pinned to a full commit SHA whose GitHub signature was verified at pin time, tag in a comment; scanner and linter versions pinned (Trivy binary, Semgrep, zizmor); zizmor audits every workflow; Dependabot proposes updates as pull requests after a 7-day cooldown; `tests/test_supply_chain.py` fails any unpinned `uses:` | 1 | 5 | 5 (Low) | `.github/workflows/ci.yml`; `.github/dependabot.yml`; `tests/test_supply_chain.py` | Implemented |
 | R-16 | Operational | Repository secrets and the workflow write token | A fork pull request or a crafted branch or tag name runs attacker code with repository secrets or a write token ("pwn request", template injection) | T1528 | `pull_request_target`, write tokens by default, `${{ }}` expressions inside shell scripts, credentials persisted by checkout | 3 | 5 | 15 (High) | No `pull_request_target`; top-level token read-only and widened per job (release only); `persist-credentials: false` on every checkout; values reach shell only through `env:`; approval required for external contributors' workflows | 1 | 4 | 4 (Low) | `.github/workflows/ci.yml`; `tests/test_supply_chain.py`; repository Actions settings | Implemented |
 | R-17 | Internal | Hunt toolkit image used by analysts (sigma-cli, PyMISP) | A vulnerable or tampered image reaches the analysts who run it | T1525; T1195.002 | Base images not pinned or scanned; artefacts not signed, so a swapped image is indistinguishable | 3 | 4 | 12 (Medium) | Base image pinned by digest; image runs as a non-root user and ships without pip; CI starts the built image and fails if sigma or PyMISP cannot load; Trivy blocks HIGH/CRITICAL fixable findings and scans compose, Dockerfile and workflow config; release signs the image by digest with keyless Cosign and attaches a Syft SPDX SBOM. Signing decision: keyless, because the repository is public and the Rekor transparency log entry adds nothing an observer cannot already see | 1 | 4 | 4 (Low) | `toolkit/Dockerfile`; `.github/workflows/ci.yml` (`scan`, `release`) | Implemented |
+| R-18 | Internal | SOC data store and console availability | OpenSearch or Dashboards goes down (crash, resource exhaustion, an attacker stopping the service) and nobody notices, so hunts and enrichment silently stop | T1489; T1499 | No monitoring of the platform itself; failures surface only when an analyst opens a console | 3 | 4 | 12 (Medium) | Prometheus probes OpenSearch and Dashboards every 15s through a blackbox prober over mTLS (a dedicated `monitor` client certificate, granted no data); `SocServiceDown` fires to Alertmanager after 30s; certificate expiry alerts 14 days ahead; every monitoring link is TLS from the root CA with client certificates | 2 | 2 | 4 (Low) | `config/prometheus/`; `config/alertmanager/`; `config/blackbox/`; `compose.yaml` (`monitoring` profile); `scripts/alert_demo.sh`; `tests/test_ai_review.py`; `docs/evidence/R-18-alert-fires-and-resolves.txt` | Verified |
+| R-19 | Operational | `main` branch quality and security | A sloppy or malicious change (from a person or an AI agent) is approved by a tired human reviewer who misses a leaked secret, a widened permission or a blinded rule | — | Human review is the only review; nothing reads every diff against the project rules | 3 | 4 | 12 (Medium) | Claude reviews every same-repository pull request diff against `CLAUDE.md` and the register before the human CODEOWNERS review and comments; it has no tools, can only comment (cannot approve or merge), treats the diff as untrusted data (R-13), and refusals fall back server-side; forks never receive the key | 2 | 3 | 6 (Low) | `.github/workflows/ai-review.yml`; `scripts/ai_review.py`; `requirements-review.txt`; `tests/test_ai_review.py` | Implemented |
 
 ## How each control lands in the repository
 
@@ -98,6 +101,16 @@ with keyless Cosign (an OIDC identity from the workflow, a short-lived Fulcio ce
 a public Rekor entry, no long-lived key to steal) and publishes the SBOM with the release.
 On GitHub Free the checks cannot be made required; the project never merges a red pull
 request, and the governance workflow plus the PR history prove it.
+
+**R-18 and R-19 (Lab 7).** Prometheus, Alertmanager and a blackbox prober run beside the
+stack (`make monitor-up`). The prober reaches OpenSearch and Dashboards with the `monitor`
+client certificate: enough to complete the mTLS handshake, nothing more (HTTP 401), so
+monitoring needs no password. `make alert-demo` stops OpenSearch and records
+`SocServiceDown` firing and resolving. Grafana is left out on purpose: Prometheus and
+Alertmanager already show the alert, and one fewer service is one fewer attack surface.
+The automated reviewer (`ai-review` workflow) posts its comment before the human
+CODEOWNERS review. On GitHub Free it cannot be a required status check; the evidence is
+the comment on each pull request, ahead of the merge.
 
 Dependabot's first run tested these gates. Its sigma-cli 4 proposals (#9, #10) failed
 `scan`: sigma-cli 4 needs pySigma 2, which the OpenSearch backend does not support. Its

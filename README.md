@@ -124,6 +124,28 @@ make misp-down
 
 Live indicators (`enrich/`) and exposure snapshots (`exposure/`) are git-ignored.
 
+## Monitoring and automated review (Lab 7)
+
+```bash
+make monitor-up      # Prometheus https://localhost:9090, Alertmanager https://localhost:9093
+make alert-demo      # stop OpenSearch, watch SocServiceDown fire and resolve
+make monitor-down
+```
+
+Prometheus probes OpenSearch and Dashboards every 15 seconds through a blackbox prober.
+Every link (Prometheus to prober, prober to OpenSearch, Prometheus to Alertmanager) is TLS
+from the project root CA with client certificates. The prober's `monitor` certificate
+completes the mTLS handshake but is granted no data, so monitoring needs no password.
+Alerts: `SocServiceDown` (probe failing for 30s), `MonitoringTargetDown`,
+`CertificateExpiresSoon` (14 days).
+
+The `ai-review` workflow sends each same-repository pull request diff, with `CLAUDE.md` and
+the register's risk IDs, to Claude and posts the review as a comment before the human
+CODEOWNERS review. It needs the repository secret `ANTHROPIC_API_KEY` (skipped with a notice
+otherwise); the optional repository variable `REVIEW_MODEL` selects the model (default
+`claude-opus-5-5`; `claude-sonnet-5-5` or `claude-haiku-5-5` cost less). The job may only
+comment, never approve or merge, and treats the diff as untrusted data.
+
 ## Run the stack (Lab 3)
 
 Requirements: Docker Desktop (arm64), `sops`, `age`, `openssl`, and an age key in
