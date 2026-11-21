@@ -18,7 +18,10 @@ A small self-hosted SOC platform for hypothesis-driven APT hunting:
    AI assistant under the controls in `CLAUDE.md` and `.claude/`, and land only through
    reviewed, tested pull requests.
 
-Scope and every control trace back to [RISK-REGISTER.md](RISK-REGISTER.md).
+Scope and every control trace back to [RISK-REGISTER.md](RISK-REGISTER.md), the source of
+truth. The same register in the course spreadsheet template, with its score formulas and
+colour bands, is [docs/RISK-REGISTER.xlsx](docs/RISK-REGISTER.xlsx), regenerated with
+`make register-xlsx` and kept in sync by `tests/test_register_export.py`.
 
 **Stack:** OpenSearch and OpenSearch Dashboards (Docker Compose, arm64, pinned digests),
 SOPS/age secrets, a local root CA for mTLS, Sigma and pytest, MISP with PyMISP, Shodan,
@@ -36,7 +39,7 @@ Prometheus and Alertmanager.
 ├── config/              service configuration (OpenSearch, Prometheus, Alertmanager, ...)
 ├── deploy/              Compose files: SOC stack with monitoring, MISP
 ├── detections/          Sigma rules and their committed OpenSearch queries
-├── docs/                evidence per risk ID, AI governance notes, archive
+├── docs/                evidence per risk ID, register spreadsheet, AI governance notes, archive
 ├── hunts/               hunt hypotheses H-001 ... (hunts as code)
 ├── requirements/        pinned Python dependencies: dev (CI), intel (local), review (CI)
 ├── scripts/             PKI, secrets, hunts, intel, exposure, alert demo, AI review

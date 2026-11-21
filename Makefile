@@ -1,5 +1,5 @@
 # Default commands (see CLAUDE.md).
-.PHONY: lint test hooks venv pki secrets-init secrets deploy health destroy toolkit queries hunt \
+.PHONY: lint test hooks venv pki secrets-init secrets deploy health destroy toolkit queries hunt register-xlsx \
         misp-secrets intel-secret misp-up misp-down intel exposure monitor-up monitor-down alert-demo
 
 PYTHON := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
@@ -34,6 +34,10 @@ lint:
 # Unit tests: guard hook, policies, and every hunt against its samples (R-01..R-17).
 test:
 	$(PYTHON) -m pytest -v tests/
+
+# Export RISK-REGISTER.md into the course spreadsheet template (docs/RISK-REGISTER.xlsx); all R-xx rows.
+register-xlsx:
+	$(PYTHON) scripts/export_register_xlsx.py
 
 # Reconvert every Sigma rule to the committed OpenSearch query DSL (R-09).
 queries:
