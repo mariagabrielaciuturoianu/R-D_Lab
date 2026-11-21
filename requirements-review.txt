@@ -1,0 +1,2 @@
+# Automated PR review (CI ai-review job only). Pinned; Dependabot proposes updates.
+anthropic==2.12.0

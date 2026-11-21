@@ -1,0 +1,44 @@
+# Automated pull-request review with Claude (R-19). Runs on every non-draft pull request
+# from this repository and posts one advisory comment before the human CODEOWNERS review.
+# Without the ANTHROPIC_API_KEY secret it skips with a notice instead of failing.
+name: ai-review
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    # Same-repository pull requests only: forks never receive the API key (R-16).
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write   # comment on the pull request; cannot approve, request changes or merge
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Review the diff with Claude and comment
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          REVIEW_MODEL: ${{ vars.REVIEW_MODEL }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::notice::ANTHROPIC_API_KEY is not set; automated review skipped"
+            exit 0
+          fi
+          pip install -r requirements-review.txt
+          gh pr diff "$PR_NUMBER" --repo "$REPO" > pr.diff
+          python scripts/ai_review.py pr.diff > review.md
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file review.md
